@@ -84,7 +84,7 @@ class MLCLIClient(asynchat.async_chat):
                     for item in items:
                         try:
                             telegram.append(int(item[:-1], base=16))
-                        except:
+                        except TypeError:
                             # abort if invalid character found
                             self.log.debug('Invalid character ' + str(item) + ' found in telegram: ' +
                                            ''.join(items) + '\nAborting!')
@@ -362,7 +362,7 @@ class MLCLIClient(asynchat.async_chat):
                         for channel in device['Sources'][message["State_Update"]["source"]]['channels']:
                             if channel['number'] == message["State_Update"]["nowPlayingDetails"]["channel_track"]:
                                 message["State_Update"]["nowPlaying"] = channel['name']
-                                break
+                                return
             # If device is a NetLink device and has no ML_ID, seek a generic solution from the first device that has
             # this source available: This could give an incorrect response if a link room device has a different
             # favorites list to the Audio Master!
@@ -372,7 +372,7 @@ class MLCLIClient(asynchat.async_chat):
                         for channel in device['Sources'][message["State_Update"]["source"]]['channels']:
                             if channel['number'] == message["State_Update"]["nowPlayingDetails"]["channel_track"]:
                                 message["State_Update"]["nowPlaying"] = channel['name']
-                                break
+                                return
 
     @staticmethod
     def _get_source_name(source, message):
