@@ -5,7 +5,8 @@ import time
 import json
 from collections import OrderedDict
 
-import Resources.CONSTANTS as const
+import Resources.CONSTANTS as CONST
+
 
 class MLCLIClient(asynchat.async_chat):
     """Client to monitor raw packet traffic on the Masterlink network via the undocumented command line interface
@@ -57,7 +58,7 @@ class MLCLIClient(asynchat.async_chat):
         telegram = self._received_data
         self._received_data = ""
 
-        #clear login process lines before processing telegrams
+        # Clear login process lines before processing telegrams
         if self._i <= self._header_lines:
             self._i += 1
         if self._i == self._header_lines - 1:
@@ -65,32 +66,43 @@ class MLCLIClient(asynchat.async_chat):
             if telegram[0:4] != "MLGW":
                 self.isBLGW = True
 
-        #Process telegrams and return json data in human readable format
+        # Process telegrams and return json data in human readable format
         if self._i > self._header_lines:
-            items = telegram.split()[1:]
-            if len(items):
-                telegram=bytearray()
-                for item in items:
-                    try:
-                        telegram.append(int(item[:-1],base=16))
-                    except:
-                        #abort if invalid character found
-                        break
+            if "---- Logging" in telegram:
+                # Pong telegram
+                header = telegram
+                payload = []
+                message = OrderedDict([('payload_type', 'Pong'), ('CONNECTION', 'Online')])
+                self.is_connected = True
+                if self.messageCallBack:
+                    self.messageCallBack(self.name, header, str(list(payload)), message)
+            else:
+                # ML protocol message detected
+                items = telegram.split()[1:]
+                if len(items):
+                    telegram = bytearray()
+                    for item in items:
+                        try:
+                            telegram.append(int(item[:-1], base=16))
+                        except:
+                            # abort if invalid character found
+                            self.log.debug('Invalid character ' + str(item) + ' found in telegram: ' +
+                                           ''.join(items) + '\nAborting!')
+                            break
 
-            #Decode any telegram with a valid 9 byte header, excluding typy 0x14 (regular clock sync pings)
-            if len(telegram) >= 9 and telegram[7] != 0x14:
-                #Header: To_Device/From_Device/1/Type/To_Source/From_Source/0/Payload_Type/Length
-                header = telegram[:9]
-                payload = telegram[9:]
-                message = self._decode(telegram)
-                self._report(header, payload, message)
+                # Decode any telegram with a valid 9 byte header, excluding typy 0x14 (regular clock sync pings)
+                if len(telegram) >= 9 and telegram[7] != 0x14:
+                    # Header: To_Device/From_Device/1/Type/To_Source/From_Source/0/Payload_Type/Length
+                    header = telegram[:9]
+                    payload = telegram[9:]
+                    message = self._decode(telegram)
+                    self._report(header, payload, message)
 
     def client_connect(self):
         self.log.info('Connecting to host at %s, port %i', self._host, self._port)
         self.set_terminator(b'\r\n')
         # Create the socket
         try:
-            socket.setdefaulttimeout(3)
             self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         except socket.error, e:
             self.log.info("Error creating socket: %s" % e)
@@ -101,11 +113,11 @@ class MLCLIClient(asynchat.async_chat):
         except socket.gaierror, e:
             self.log.info("\tError with address %s:%i - %s" % (self._host, self._port, e))
             self.handle_close()
-        except socket.error, e:
-            self.log.info("\tError opening connection to %s:%i - %s" % (self._host, self._port, e))
-            self.handle_close()
         except socket.timeout, e:
             self.log.info("\tSocket connection to %s:%i timed out- %s" % (self._host, self._port, e))
+            self.handle_close()
+        except socket.error, e:
+            self.log.info("\tError opening connection to %s:%i - %s" % (self._host, self._port, e))
             self.handle_close()
         else:
             self.is_connected = True
@@ -121,14 +133,14 @@ class MLCLIClient(asynchat.async_chat):
         self.is_connected = False
         self.close()
 
-    def send_cmd(self,telegram):
+    def send_cmd(self, telegram):
         try:
             self.push(telegram + "\r\n")
-        except socket.error, e:
-            self.log.info("Error sending data: %s" % e)
-            self.handle_close()
         except socket.timeout, e:
             self.log.info("\tSocket connection to %s:%i timed out- %s" % (self._host, self._port, e))
+            self.handle_close()
+        except socket.error, e:
+            self.log.info("Error sending data: %s" % e)
             self.handle_close()
         else:
             self.last_sent = telegram
@@ -149,7 +161,8 @@ class MLCLIClient(asynchat.async_chat):
 
     # ########################################################################################
     # ##### Utility functions
-    def _hexbyte(self, byte):
+    @staticmethod
+    def _hexbyte(byte):
         resultstr = hex(byte)
         if byte < 16:
             resultstr = resultstr[:2] + "0" + resultstr[2]
@@ -162,12 +175,13 @@ class MLCLIClient(asynchat.async_chat):
 
     def _dictsanitize(self, d, s):
         result = d.get(s)
-        if result == None:
+        if result is None:
             result = self._hexbyte(s)
             self.log.debug("UNKNOWN (type=" + result + ")")
         return str(result)
 
-    def _get_type(self, d, s):
+    @staticmethod
+    def _get_type(d, s):
         rev_dict = {value: key for key, value in d.items()}
         for i in range(len(list(rev_dict))):
             if s in list(rev_dict)[i]:
@@ -175,127 +189,195 @@ class MLCLIClient(asynchat.async_chat):
 
     # ########################################################################################
     # ##### Decode Masterlink Protocol packet to a serializable dict
-
     def _decode(self, telegram):
         # Decode header
         message = OrderedDict()
-        if const.devices:
-            for device in const.devices:
+        if CONST.devices:
+            for device in CONST.devices:
                 if device['ML_ID'] == telegram[1]:
                     message["Zone"] = device["Zone"].upper()
                     message["Room"] = device["Room"].uppr()
                     message["Type"] = "AV RENDERER"
                     message["Device"] = device["Device"]
-        message["from_device"] = self._dictsanitize(const._ml_device_dict, telegram[1])
-        message["from_source"] = self._dictsanitize(const._ml_selectedsourcedict, telegram[5])
-        message["to_device"] = self._dictsanitize(const._ml_device_dict, telegram[0])
-        message["to_source"] = self._dictsanitize(const._ml_selectedsourcedict, telegram[4])
-        message["type"] = self._dictsanitize(const._ml_telegram_type_dict, telegram[3])
-        message["payload_type"] = self._dictsanitize(const._ml_command_type_dict, telegram[7])
+                    break
+        message["from_device"] = self._dictsanitize(CONST.ml_device_dict, telegram[1])
+        message["from_source"] = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[5])
+        message["to_device"] = self._dictsanitize(CONST.ml_device_dict, telegram[0])
+        message["to_source"] = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[4])
+        message["type"] = self._dictsanitize(CONST.ml_telegram_type_dict, telegram[3])
+        message["payload_type"] = self._dictsanitize(CONST.ml_command_type_dict, telegram[7])
         message["payload_len"] = telegram[8] + 1
-        message["payload"] = OrderedDict()
+        message["State_Update"] = OrderedDict()
 
         # source status info
         # TTFF__TYDSOS__PTLLPS SR____LS______SLSHTR__ACSTPI________________________TRTR______
         if message.get("payload_type") == "STATUS_INFO":
-            message["payload"]["source"] = self._dictsanitize(const._ml_selectedsourcedict, telegram[10])
-            message["payload"]["sourceID"] = telegram[10]
-            message["payload"]["source_type"] = telegram[22]
-            message["payload"]["local_source"] = telegram[13]
-            message["payload"]["source_medium"] = self._hexword(telegram[18], telegram[17])
-            message["payload"]["channel_track"] = (
-                telegram[19] if telegram[8] < 27 else (telegram[36] * 256 + telegram[37])
-            )
-            message["payload"]["picture_identifier"] = self._dictsanitize(const._ml_pictureformatdict, telegram[23])
-            message["payload"]["state"] = self._dictsanitize(const._sourceactivitydict, telegram[21])
+            message["State_Update"]["nowPlaying"] = ''
+            message["State_Update"]["nowPlayingDetails"] = OrderedDict()
+            message["State_Update"]["nowPlayingDetails"]["local_source"] = telegram[13]
+            message["State_Update"]["nowPlayingDetails"]["type"] = telegram[22]
+            if telegram[8] < 27:
+                message["State_Update"]["nowPlayingDetails"]["channel_track"] = telegram[19]
+            else:
+                message["State_Update"]["nowPlayingDetails"]["channel_track"] = telegram[36] * 256 + telegram[37]
+            message["State_Update"]["nowPlayingDetails"]["source_medium_position"] = \
+                self._hexword(telegram[18], telegram[17])
+            message["State_Update"]["nowPlayingDetails"]["picture_identifier"] = \
+                self._dictsanitize(CONST.ml_pictureformatdict, telegram[23])
+            source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[10])
+            self._get_source_name(source, message)
+            message["State_Update"]["source"] = source
+            message["State_Update"]["sourceID"] = telegram[10]
+            self._get_channel_track(telegram, message)
+            message["State_Update"]["state"] = self._dictsanitize(CONST.sourceactivitydict, telegram[21])
 
         # display source information
         if message.get("payload_type") == "DISPLAY_SOURCE":
             _s = ""
             for i in range(0, telegram[8] - 5):
                 _s = _s + chr(telegram[i + 15])
-            message["payload"]["display_source"] = _s.rstrip()
+            message["State_Update"]["display_source"] = _s.rstrip()
 
         # extended source information
         if message.get("payload_type") == "EXTENDED_SOURCE_INFORMATION":
-            message["payload"]["info_type"] = telegram[10]
+            message["State_Update"]["info_type"] = telegram[10]
             _s = ""
             for i in range(0, telegram[8] - 14):
                 _s = _s + chr(telegram[i + 24])
-            message["payload"]["info_value"] = _s
+            message["State_Update"]["info_value"] = _s
 
         # beo4 command
         if message.get("payload_type") == "BEO4_KEY":
-            message["payload"]["source"] = self._dictsanitize(const._ml_selectedsourcedict, telegram[10])
-            message["payload"]["sourceID"] = telegram[10]
-            message["payload"]["source_type"] = self._get_type(const._ml_selectedsource_type_dict, telegram[10])
-            message["payload"]["command"] = self._dictsanitize(const.beo4_commanddict, telegram[11])
+            source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[10])
+            self._get_source_name(source, message)
+            message["State_Update"]["source"] = source
+            message["State_Update"]["sourceID"] = telegram[10]
+            message["State_Update"]["source_type"] = self._get_type(CONST.ml_selectedsource_type_dict, telegram[10])
+            message["State_Update"]["command"] = self._dictsanitize(CONST.beo4_commanddict, telegram[11])
 
         # audio track info long
         if message.get("payload_type") == "TRACK_INFO_LONG":
-            message["payload"]["source"] = self._dictsanitize(const._ml_selectedsourcedict, telegram[11])
-            message["payload"]["sourceID"] = telegram[11]
-            message["payload"]["source_type"] = self._get_type(const._ml_selectedsource_type_dict, telegram[11])
-            message["payload"]["channel_track"] = telegram[12]
-            message["payload"]["state"] = self._dictsanitize(const._sourceactivitydict, telegram[13])
+            message["State_Update"]["nowPlaying"] = ''
+            message["State_Update"]["nowPlayingDetails"] = OrderedDict()
+            message["State_Update"]["nowPlayingDetails"]["type"] = \
+                self._get_type(CONST.ml_selectedsource_type_dict, telegram[11])
+            message["State_Update"]["nowPlayingDetails"]["channel_track"] = telegram[12]
+            source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
+            self._get_source_name(source, message)
+            message["State_Update"]["source"] = source
+            message["State_Update"]["sourceID"] = telegram[11]
+            self._get_channel_track(telegram, message)
+            message["State_Update"]["state"] = self._dictsanitize(CONST.sourceactivitydict, telegram[13])
 
         # video track info
         if message.get("payload_type") == "VIDEO_TRACK_INFO":
-            message["payload"]["source"] = self._dictsanitize(const._ml_selectedsourcedict, telegram[13])
-            message["payload"]["sourceID"] = telegram[13]
-            message["payload"]["source_type"] = self._get_type(const._ml_selectedsource_type_dict, telegram[13])
-            message["payload"]["channel_track"] = telegram[11] * 256 + telegram[12]
-            message["payload"]["state"] = self._dictsanitize(const._sourceactivitydict, telegram[14])
+            message["State_Update"]["nowPlaying"] = ''
+            message["State_Update"]["nowPlayingDetails"] = OrderedDict()
+            message["State_Update"]["nowPlayingDetails"]["source_type"] = \
+                self._get_type(CONST.ml_selectedsource_type_dict, telegram[13])
+            message["State_Update"]["nowPlayingDetails"]["channel_track"] = telegram[11] * 256 + telegram[12]
+            source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[13])
+            self._get_source_name(source, message)
+            message["State_Update"]["source"] = source
+            message["State_Update"]["sourceID"] = telegram[13]
+            self._get_channel_track(telegram, message)
+            message["State_Update"]["state"] = self._dictsanitize(CONST.sourceactivitydict, telegram[14])
 
         # track change info
         if message.get("payload_type") == "TRACK_INFO":
-            message["payload"]["subtype"] = self._dictsanitize(const._ml_trackinfo_subtype_dict, telegram[9])
-            if message["payload"].get("subtype") == "Change Source":
-                message["payload"]["prev_source"] = self._dictsanitize(const._ml_selectedsourcedict, telegram[11])
-                message["payload"]["prev_sourceID"] = telegram[11]
-                message["payload"]["prev_source_type"] = self._get_type(
-                    const._ml_selectedsource_type_dict, telegram[11])
+            message["State_Update"]["subtype"] = self._dictsanitize(CONST.ml_trackinfo_subtype_dict, telegram[9])
+            if message["State_Update"].get("subtype") == "Change Source":
+                message["State_Update"]["prev_source"] = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
+                message["State_Update"]["prev_sourceID"] = telegram[11]
+                message["State_Update"]["prev_source_type"] = self._get_type(
+                    CONST.ml_selectedsource_type_dict, telegram[11])
                 if len(telegram) > 18:
-                    message["payload"]["source"] = self._dictsanitize(const._ml_selectedsourcedict, telegram[22])
-                    message["payload"]["sourceID"] = telegram[22]
-            if message["payload"].get("subtype") == "Current Source":
-                message["payload"]["source"] = self._dictsanitize(const._ml_selectedsourcedict, telegram[11])
-                message["payload"]["sourceID"] = telegram[11]
-                message["payload"]["source_type"] = self._get_type(const._ml_selectedsource_type_dict, telegram[11])
+                    source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[22])
+                    self._get_source_name(source, message)
+                    message["State_Update"]["source"] = source
+                    message["State_Update"]["sourceID"] = telegram[22]
+
+            if message["State_Update"].get("subtype") == "Current Source":
+                source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
+                self._get_source_name(source, message)
+                message["State_Update"]["source"] = source
+                message["State_Update"]["sourceID"] = telegram[11]
+                message["State_Update"]["source_type"] = self._get_type(CONST.ml_selectedsource_type_dict, telegram[11])
             else:
-                message["payload"]["subtype"] = "Undefined: " + self._hexbyte(telegram[9])
+                message["State_Update"]["subtype"] = "Undefined: " + self._hexbyte(telegram[9])
 
         # goto source
         if message.get("payload_type") == "GOTO_SOURCE":
-            message["payload"]["source"] = self._dictsanitize(const._ml_selectedsourcedict, telegram[11])
-            message["payload"]["sourceID"] = telegram[11]
-            message["payload"]["source_type"] = self._get_type(const._ml_selectedsource_type_dict, telegram[11])
-            message["payload"]["channel_track"] = telegram[12]
+            message["State_Update"]["nowPlaying"] = ''
+            message["State_Update"]["nowPlayingDetails"] = OrderedDict()
+            message["State_Update"]["nowPlayingDetails"]["source_type"] = \
+                self._get_type(CONST.ml_selectedsource_type_dict, telegram[11])
+            message["State_Update"]["nowPlayingDetails"]["channel_track"] = telegram[12]
+            source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
+            self._get_source_name(source, message)
+            message["State_Update"]["source"] = source
+            message["State_Update"]["sourceID"] = telegram[11]
+            self._get_channel_track(telegram, message)
 
         # remote request
         if message.get("payload_type") == "MLGW_REMOTE_BEO4":
-            message["payload"]["command"] = self._dictsanitize(const.beo4_commanddict, telegram[14])
-            message["payload"]["destination"] = self._dictsanitize(const._destselectordict, telegram[11])
+            message["State_Update"]["command"] = self._dictsanitize(CONST.beo4_commanddict, telegram[14])
+            message["State_Update"]["destination"] = self._dictsanitize(CONST.destselectordict, telegram[11])
 
         # request_key
         if message.get("payload_type") == "LOCK_MANAGER_COMMAND":
-            message["payload"]["subtype"] = self._dictsanitize(
-                const._ml_command_type_request_key_subtype_dict, telegram[9])
+            message["State_Update"]["subtype"] = self._dictsanitize(
+                CONST.ml_command_type_request_key_subtype_dict, telegram[9])
 
         # request distributed audio source
         if message.get("payload_type") == "REQUEST_DISTRIBUTED_SOURCE":
-            message["payload"]["subtype"] = self._dictsanitize(const._ml_activity_dict, telegram[9])
-            if message["payload"].get('subtype') == "Source Active":
-                message["payload"]["source"] = self._dictsanitize(const._ml_selectedsourcedict, telegram[13])
-                message["payload"]["sourceID"] = telegram[13]
-                message["payload"]["source_type"] = self._get_type(const._ml_selectedsource_type_dict, telegram[13])
+            message["State_Update"]["subtype"] = self._dictsanitize(CONST.ml_activity_dict, telegram[9])
+            if message["State_Update"].get('subtype') == "Source Active":
+                source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[13])
+                self._get_source_name(source, message)
+                message["State_Update"]["source"] = source
+                message["State_Update"]["sourceID"] = telegram[13]
+                message["State_Update"]["source_type"] = self._get_type(CONST.ml_selectedsource_type_dict, telegram[13])
 
         # request local audio source
         if message.get("payload_type") == "REQUEST_LOCAL_SOURCE":
-            message["payload"]["subtype"] = self._dictsanitize(const._ml_activity_dict, telegram[9])
-            if message["payload"].get('subtype') == "Source Active":
-                message["payload"]["source"] = self._dictsanitize(const._ml_selectedsourcedict, telegram[11])
-                message["payload"]["sourceID"] = telegram[11]
-                message["payload"]["source_type"] = self._get_type(const._ml_selectedsource_type_dict, telegram[11])
+            message["State_Update"]["subtype"] = self._dictsanitize(CONST.ml_activity_dict, telegram[9])
+            if message["State_Update"].get('subtype') == "Source Active":
+                source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
+                self._get_source_name(source, message)
+                message["State_Update"]["source"] = source
+                message["State_Update"]["sourceID"] = telegram[11]
+                message["State_Update"]["source_type"] = self._get_type(CONST.ml_selectedsource_type_dict, telegram[11])
 
         return message
+
+    @staticmethod
+    def _get_channel_track(telegram, message):
+        # Check device list for channel name information
+        if CONST.devices:
+            for device in CONST.devices:
+                # Loop over devices to find source list for this specific device
+                if device['ML_ID'] == telegram[1]:
+                    if 'channels' in device['Sources'][message["State_Update"]["source"]]:
+                        for channel in device['Sources'][message["State_Update"]["source"]]['channels']:
+                            if channel['number'] == message["State_Update"]["nowPlayingDetails"]["channel_track"]:
+                                message["State_Update"]["nowPlaying"] = channel['name']
+                                break
+            # If device is a NetLink device and has no ML_ID, seek a generic solution from the first device that has
+            # this source available: This could give an incorrect response if a link room device has a different
+            # favorites list to the Audio Master!
+            for device in CONST.devices:
+                if message["State_Update"]["source"] in device['Sources']:
+                    if 'channels' in device['Sources'][message["State_Update"]["source"]]:
+                        for channel in device['Sources'][message["State_Update"]["source"]]['channels']:
+                            if channel['number'] == message["State_Update"]["nowPlayingDetails"]["channel_track"]:
+                                message["State_Update"]["nowPlaying"] = channel['name']
+                                break
+
+    @staticmethod
+    def _get_source_name(source, message):
+        if CONST.available_sources:
+            for src in CONST.available_sources:
+                if src[1] == source:
+                    message["State_Update"]["sourceName"] = src[0]
+                    break

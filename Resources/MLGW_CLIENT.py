@@ -5,7 +5,8 @@ import time
 import json
 from collections import OrderedDict
 
-import Resources.CONSTANTS as const
+import Resources.CONSTANTS as CONST
+
 
 class MLGWClient(asynchat.async_chat):
     """Client to interact with a B&O Gateway via the MasterLink Gateway Protocol
@@ -19,7 +20,7 @@ class MLGWClient(asynchat.async_chat):
         self._host = host_address
         self._port = int(port)
         self._user = user
-        self._pwd  = pwd
+        self._pwd = pwd
         self.name = name
         self.is_connected = False
 
@@ -36,10 +37,11 @@ class MLGWClient(asynchat.async_chat):
         else:
             self.messageCallBack = None
 
-        #Expose dictionaries via API
-        self.BEO4_CMDS = const.BEO4_CMDS
-        self.CMDS_DEST = const.CMDS_DEST
-        self.MLGW_PL = const.MLGW_PL
+        # Expose dictionaries via API
+        self.BEO4_CMDS = CONST.BEO4_CMDS
+        self.BEORMT1_CMDS = CONST.beoremoteone_commanddict
+        self.CMDS_DEST = CONST.CMDS_DEST
+        self.MLGW_PL = CONST.MLGW_PL
 
         # ########################################################################################
         # ##### Open Socket and connect to B&O Gateway
@@ -52,10 +54,10 @@ class MLGWClient(asynchat.async_chat):
         self.log.debug(data)
         self._received_data = bytearray(data)
 
-        bit1 = int(self._received_data[0])       #Start of Header == 1
-        bit2 = int(self._received_data[1])       #Message Type
-        bit3 = int(self._received_data[2])       #Payload length
-        bit4 = int(self._received_data[3])       #Spare Bit/End of Header == 0
+        bit1 = int(self._received_data[0])       # Start of Header == 1
+        bit2 = int(self._received_data[1])       # Message Type
+        bit3 = int(self._received_data[2])       # Payload length
+        bit4 = int(self._received_data[3])       # Spare Bit/End of Header == 0
 
         payload = bytearray()
         for item in self._received_data[4:bit3 + 4]:
@@ -77,8 +79,7 @@ class MLGWClient(asynchat.async_chat):
 
     def _decode(self, msg_type, header, payload):
         message = OrderedDict()
-        payload_type = self._dictsanitize(const._mlgw_payloadtypedict, msg_type)
-        message["Payload_type"] = payload_type
+        payload_type = self._dictsanitize(CONST.mlgw_payloadtypedict, msg_type)
 
         if payload_type == "MLGW virtual button event":
             virtual_btn = payload[0]
@@ -87,6 +88,7 @@ class MLGWClient(asynchat.async_chat):
             else:
                 virtual_action = self._getvirtualactionstr(payload[1])
 
+            message["payload_type"] = payload_type
             message["button"] = virtual_btn
             message["action"] = virtual_action
 
@@ -99,75 +101,89 @@ class MLGWClient(asynchat.async_chat):
             else:
                 self.log.info("\tLogin successful to %s", self._host)
                 self.is_connected = True
+                message["payload_type"] = payload_type
                 message['Connected'] = "True"
                 self.get_serial()
 
         elif payload_type == "Pong":
-                self.is_connected = True
-                message['CONNECTION'] = 'Online'
+            self.is_connected = True
+            message["payload_type"] = payload_type
+            message['CONNECTION'] = 'Online'
 
         elif payload_type == "Serial Number":
             sn = ''
             for c in payload:
                 sn += chr(c)
-            message['Serial_Num'] = sn
+            message["payload_type"] = payload_type
+            message['serial_Num'] = sn
 
         elif payload_type == "Source Status":
-            if const.rooms and const.devices:
-                for device in const.devices:
+            if CONST.rooms and CONST.devices:
+                for device in CONST.devices:
                     if device['MLN'] == payload[0]:
                         name = device['Device']
-                        for room in const.rooms:
+                        for room in CONST.rooms:
                             if name in room['Products']:
                                 message["Zone"] = room['Zone'].upper()
                                 message["Room"] = room['Room_Name'].upper()
                                 message["Type"] = 'AV RENDERER'
                                 message["Device"] = name
-
+            message["payload_type"] = payload_type
             message["MLN"] = payload[0]
-            message["Source"] = self._getselectedsourcestr(payload[1]).upper()
-            message["Source_medium_position"] = self._hexword(payload[2], payload[3])
-            message["Source_position"] = self._hexword(payload[4], payload[5])
-            message["Picture_format"] = self._getdictstr(const.ml_pictureformatdict, payload[7])
-            message["State"] = self._getdictstr(const._sourceactivitydict, payload[6])
+            message["State_Update"] = OrderedDict()
+            message["State_Update"]["nowPlaying"] = ''
+            message["State_Update"]["nowPlayingDetails"] = OrderedDict()
+            message["State_Update"]["nowPlayingDetails"]["channel_track"] = \
+                self._hexword(payload[4], payload[5])
+            message["State_Update"]["nowPlayingDetails"]["source_medium_position"] = \
+                self._hexword(payload[2], payload[3])
+            message["State_Update"]["nowPlayingDetails"]["picture_format"] = \
+                self._getdictstr(CONST.ml_pictureformatdict, payload[7])
+            source = self._getselectedsourcestr(payload[1]).upper()
+            self._get_source_name(source, message)
+            message["State_Update"]["source"] = source
+            self._get_channel_track(message)
+            message["State_Update"]["state"] = self._getdictstr(CONST.sourceactivitydict, payload[6])
 
         elif payload_type == "Picture and Sound Status":
-            if const.rooms and const.devices:
-                for device in const.devices:
+            if CONST.rooms and CONST.devices:
+                for device in CONST.devices:
                     if device['MLN'] == payload[0]:
                         name = device['Device']
-                        for room in const.rooms:
+                        for room in CONST.rooms:
                             if name in room['Products']:
                                 message["Zone"] = room['Zone'].upper()
                                 message["Room"] = room['Room_Name'].upper()
                                 message["Type"] = 'AV RENDERER'
                                 message["Device"] = name
-
+            message["payload_type"] = payload_type
             message["MLN"] = payload[0]
-            message["Sound_status"] = self._getdictstr(const.mlgw_soundstatusdict, payload[1])
-            message["Speaker_mode"] = self._getdictstr(const._mlgw_speakermodedict, payload[2])
-            message["Stereo_mode"] = self._getdictstr(const._mlgw_stereoindicatordict, payload[9])
-            message["Volume"] = int(payload[3])
-            message["Screen1_mute"] = self._getdictstr(const._mlgw_screenmutedict, payload[4])
-            message["Screen1_active"] = self._getdictstr(const._mlgw_screenactivedict, payload[5])
-            message["Screen2_mute"] = self._getdictstr(const._mlgw_screenmutedict, payload[6])
-            message["Screen2_active"] = self._getdictstr(const._mlgw_screenactivedict, payload[7])
-            message["Cinema_mode"] = self._getdictstr(const._mlgw_cinemamodedict, payload[8])
-
+            message["State_Update"] = OrderedDict()
+            message["State_Update"]["sound_status"] = self._getdictstr(CONST.mlgw_soundstatusdict, payload[1])
+            message["State_Update"]["speakermode"] = self._getdictstr(CONST.mlgw_speakermodedict, payload[2])
+            message["State_Update"]["stereo_mode"] = self._getdictstr(CONST.mlgw_stereoindicatordict, payload[9])
+            message["State_Update"]["screen1_mute"] = self._getdictstr(CONST.mlgw_screenmutedict, payload[4])
+            message["State_Update"]["screen1_active"] = self._getdictstr(CONST.mlgw_screenactivedict, payload[5])
+            message["State_Update"]["screen2_mute"] = self._getdictstr(CONST.mlgw_screenmutedict, payload[6])
+            message["State_Update"]["screen2_active"] = self._getdictstr(CONST.mlgw_screenactivedict, payload[7])
+            message["State_Update"]["cinema_mode"] = self._getdictstr(CONST.mlgw_cinemamodedict, payload[8])
+            message["volume"] = int(payload[3])
 
         elif payload_type == "All standby notification":
-            message["Command"] = "All Standby"
+            message["payload_type"] = payload_type
+            message["command"] = "All Standby"
 
         elif payload_type == "Light and Control command":
-            if const.rooms:
-                for room in const.rooms:
+            if CONST.rooms:
+                for room in CONST.rooms:
                     if room['Room_Number'] == payload[0]:
                         message["Zone"] = room['Zone'].upper()
                         message["Room"] = room['Room_Name'].upper()
-            message["Type"] = self._getdictstr(const._mlgw_lctypedict, payload[1]).upper() + " COMMAND"
+            message["Type"] = self._getdictstr(CONST.mlgw_lctypedict, payload[1]).upper() + " COMMAND"
             message["Device"] = 'Beo4/BeoRemote One'
-            message["Room number"] = str(payload[0])
-            message["Command"] = self._getbeo4commandstr(payload[2])
+            message["payload_type"] = payload_type
+            message["room_number"] = str(payload[0])
+            message["command"] = self._getbeo4commandstr(payload[2])
 
         if message != '':
             self._report(header, payload, message)
@@ -177,7 +193,6 @@ class MLGWClient(asynchat.async_chat):
         self.set_terminator(b'\r\n')
         # Create the socket
         try:
-            socket.setdefaulttimeout(3)
             self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         except socket.error, e:
             self.log.info("Error creating socket: %s" % e)
@@ -188,18 +203,18 @@ class MLGWClient(asynchat.async_chat):
         except socket.gaierror, e:
             self.log.info("\tError with address %s:%i - %s" % (self._host, self._port, e))
             self.handle_close()
-        except socket.error, e:
-            self.log.info("\tError opening connection to %s:%i - %s" % (self._host, self._port, e))
-            self.handle_close()
         except socket.timeout, e:
             self.log.info("\tSocket connection to %s:%i timed out- %s" % (self._host, self._port, e))
+            self.handle_close()
+        except socket.error, e:
+            self.log.info("\tError opening connection to %s:%i - %s" % (self._host, self._port, e))
             self.handle_close()
         else:
             self.is_connected = True
             self.log.info("\tConnected to B&O Gateway")
 
     def handle_connect(self):
-        login=[]
+        login = []
         for c in self._user:
             login.append(c)
         login.append(0x00)
@@ -207,7 +222,7 @@ class MLGWClient(asynchat.async_chat):
             login.append(c)
 
         self.log.info("\tAttempting to Authenticate...")
-        self._send_cmd(const.MLGW_PL.get("LOGIN REQUEST"), login)
+        self._send_cmd(CONST.MLGW_PL.get("LOGIN REQUEST"), login)
 
     def handle_close(self):
         self.log.info(self.name + ": Closing socket")
@@ -223,21 +238,21 @@ class MLGWClient(asynchat.async_chat):
     # ########################################################################################
     # ##### mlgw send_cmder functions
 
-     ## send_cmd command to mlgw
+    # send_cmd command to mlgw
     def _send_cmd(self, msg_type, payload):
-        #construct header
-        telegram = [1,msg_type,len(payload),0]
-        #append payload
+        # Construct header
+        telegram = [1, msg_type, len(payload), 0]
+        # append payload
         for p in payload:
             telegram.append(p)
 
         try:
             self.push(str(bytearray(telegram)))
-        except socket.error, e:
-            self.log.info("Error sending data: %s" % e)
-            self.handle_close()
         except socket.timeout, e:
             self.log.info("\tSocket connection to %s:%i timed out- %s" % (self._host, self._port, e))
+            self.handle_close()
+        except socket.error, e:
+            self.log.info("Error sending data: %s" % e)
             self.handle_close()
         else:
             self.last_sent = str(bytearray(telegram))
@@ -253,53 +268,52 @@ class MLGWClient(asynchat.async_chat):
             time.sleep(0.2)
 
     def ping(self):
-        self._send_cmd(const.MLGW_PL.get("PING"), "")
+        self._send_cmd(CONST.MLGW_PL.get("PING"), "")
 
-    ## Get serial number of mlgw
+    # Get serial number of mlgw
     def get_serial(self):
         if self.is_connected:
             # Request serial number
-            self._send_cmd(const.MLGW_PL.get("REQUEST SERIAL NUMBER"), "")
+            self._send_cmd(CONST.MLGW_PL.get("REQUEST SERIAL NUMBER"), "")
 
-    ## send_cmd Beo4 command to mlgw
+    # send_cmd Beo4 command to mlgw
     def send_beo4_cmd(self, mln, dest, cmd, sec_source=0x00, link=0x00):
-        payload = []
-        payload.append(mln)           # byte[0] MLN
-        payload.append(dest)          # byte[1] Dest-Sel (0x00, 0x01, 0x05, 0x0f)
-        payload.append(cmd)           # byte[2] Beo4 Command
-        payload.append(sec_source)    # byte[3] Sec-Source
-        payload.append(link)          # byte[4] Link
-        self._send_cmd(const.MLGW_PL.get("BEO4 COMMAND"), payload)
+        payload = [
+            mln,           # byte[0] MLN
+            dest,          # byte[1] Dest-Sel (0x00, 0x01, 0x05, 0x0f)
+            cmd,           # byte[2] Beo4 Command
+            sec_source,    # byte[3] Sec-Source
+            link]          # byte[4] Link
+        self._send_cmd(CONST.MLGW_PL.get("BEO4 COMMAND"), payload)
 
-    ## send_cmd BeoRemote One command to mlgw
+    # send_cmd BeoRemote One command to mlgw
     def send_beoremoteone_cmd(self, mln, cmd, network_bit=0x00):
-        payload = []
-        payload.append(mln)           # byte[0] MLN
-        payload.append(cmd)           # byte[1] Beo4 Command
-        payload.append(0x00)          # byte[2] AV (needs to be 0)
-        payload.append(network_bit)   # byte[3] Network_bit (0 = local source, 1 = network source)
-        self._send_cmd(const.MLGW_PL.get("BEOREMOTE ONE CONTROL COMMAND"), payload)
+        payload = [
+            mln,           # byte[0] MLN
+            cmd,           # byte[1] Beo4 Command
+            0x00,          # byte[2] AV (needs to be 0)
+            network_bit]   # byte[3] Network_bit (0 = local source, 1 = network source)
+        self._send_cmd(CONST.MLGW_PL.get("BEOREMOTE ONE CONTROL COMMAND"), payload)
 
-    ## send_cmd BeoRemote One Source Select to mlgw
+    # send_cmd BeoRemote One Source Select to mlgw
     def send_beoremoteone_select_source(self, mln, cmd, unit, network_bit=0x00):
-        payload = []
-        payload.append(mln)           # byte[0] MLN
-        payload.append(cmd)           # byte[1] Beormyone Command
-        payload.append(unit)          # byte[2] Unit
-        payload.append(0x00)          # byte[3] AV (needs to be 0)
-        payload.append(network_bit)   # byte[4] Network_bit (0 = local source, 1 = network source)
-        self._send_cmd(const.MLGW_PL.get("BEOREMOTE ONE SOURCE SELECTION"), payload)
+        payload = [
+            mln,           # byte[0] MLN
+            cmd,           # byte[1] Beoremote One Command   self.BEORMT1_CMD.get('cmd')[0]
+            unit,          # byte[2] Unit                    self.BEORMT1_CMD.get('cmd')[1]
+            0x00,          # byte[3] AV (needs to be 0)
+            network_bit]   # byte[4] Network_bit (0 = local source, 1 = network source)
+        self._send_cmd(CONST.MLGW_PL.get("BEOREMOTE ONE SOURCE SELECTION"), payload)
 
-    ## send_cmd Beo4 commmand and store the source name
+    # send_cmd Beo4 commmand and store the source name
     def send_beo4_select_source(self, mln, dest, source, sec_source=0x00, link=0x00):
-        beolink_source = self._dictsanitize(const.beo4_commanddict, source).upper()
         self.send_beo4_cmd(mln, dest, source, sec_source, link)
 
     # ########################################################################################
     # ##### Utility functions
 
-
-    def _hexbyte(self, byte):
+    @staticmethod
+    def _hexbyte(byte):
         resultstr = hex(byte)
         if byte < 16:
             resultstr = resultstr[:2] + "0" + resultstr[2]
@@ -312,51 +326,66 @@ class MLGWClient(asynchat.async_chat):
 
     def _dictsanitize(self, d, s):
         result = d.get(s)
-        if result == None:
+        if result is None:
             result = "UNKNOWN (type=" + self._hexbyte(s) + ")"
         return str(result)
 
     # ########################################################################################
     # ##### Decode MLGW Protocol packet to readable string
 
-    ## Get message string for mlgw packet's payload type
-    #
+    # Get message string for mlgw packet's payload type
     def _getpayloadtypestr(self, payloadtype):
-        result = const._mlgw_payloadtypedict.get(payloadtype)
-        if result == None:
+        result = CONST.mlgw_payloadtypedict.get(payloadtype)
+        if result is None:
             result = "UNKNOWN (type=" + self._hexbyte(payloadtype) + ")"
         return str(result)
 
-    def _getmlnstr(self, mln):
-        result = "MLN=" + str(mln)
-        return result
-
     def _getbeo4commandstr(self, command):
-        result = const.beo4_commanddict.get(command)
-        if result == None:
+        result = CONST.beo4_commanddict.get(command)
+        if result is None:
             result = "Cmd=" + self._hexbyte(command)
         return result
 
     def _getvirtualactionstr(self, action):
-        result = const._mlgw_virtualactiondict.get(action)
-        if result == None:
+        result = CONST.mlgw_virtualactiondict.get(action)
+        if result is None:
             result = "Action=" + self._hexbyte(action)
         return result
 
     def _getselectedsourcestr(self, source):
-        result = const.ml_selectedsourcedict.get(source)
-        if result == None:
+        result = CONST.ml_selectedsourcedict.get(source)
+        if result is None:
             result = "Src=" + self._hexbyte(source)
         return result
 
     def _getspeakermodestr(self, source):
-        result = const._mlgw_speakermodedict.get(source)
-        if result == None:
+        result = CONST.mlgw_speakermodedict.get(source)
+        if result is None:
             result = "mode=" + self._hexbyte(source)
         return result
 
     def _getdictstr(self, mydict, mykey):
         result = mydict.get(mykey)
-        if result == None:
+        if result is None:
             result = self._hexbyte(mykey)
         return result
+
+    @staticmethod
+    def _get_source_name(source, message):
+        if CONST.available_sources:
+            for src in CONST.available_sources:
+                if src[1] == source:
+                    message["State_Update"]["sourceName"] = src[0]
+                    break
+
+    @staticmethod
+    def _get_channel_track(message):
+        # Check device list for channel name information
+        if CONST.devices:
+            for device in CONST.devices:
+                if device['Device'] == message['Device']:
+                    if 'channels' in device['Sources'][message["State_Update"]["source"]]:
+                        for channel in device['Sources'][message["State_Update"]["source"]]['channels']:
+                            if channel['number'] == int(message["State_Update"]['nowPlayingDetails']["channel_track"]):
+                                message["State_Update"]["nowPlaying"] = channel['name']
+                                break

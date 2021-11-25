@@ -5,7 +5,8 @@ import time
 import json
 from collections import OrderedDict
 
-import Resources.CONSTANTS as const
+import Resources.CONSTANTS as CONST
+
 
 class MLtnClient(asynchat.async_chat):
     """Client to monitor network activity on a Masterlink Gateway via the telnet monitor"""
@@ -74,10 +75,9 @@ class MLtnClient(asynchat.async_chat):
         self.last_received_at = 0
 
     def _decode(self, items):
-        time_stamp = ''.join([items[1],' at ',items[0]])
         header = items[3][:-1]
-        telegramStarts = len(''.join(items[:4])) + 4
-        telegram = self._received_data[telegramStarts:].replace('!','').split('/')
+        telegram_starts = len(''.join(items[:4])) + 4
+        telegram = self._received_data[telegram_starts:].replace('!', '').split('/')
         message = OrderedDict()
 
         if header == 'integration_protocol':
@@ -125,22 +125,23 @@ class MLtnClient(asynchat.async_chat):
                         message['Payload']['to_MLN'] = int(s[k], base=16)
                     if k == 11:
                         message['Payload']['Destination'] = self._dictsanitize(
-                            const._mlgw_payloaddestdict, int(s[k], base=16))
+                            CONST.destselectordict, int(s[k], base=16))
                     if k == 12:
                         message['Payload']['Command'] = self._dictsanitize(
-                            const.beo4_commanddict, int(s[k], base=16)).upper()
+                            CONST.beo4_commanddict, int(s[k], base=16)).upper()
                     if k == 13:
                         message['Payload']['Sec-Source'] = self._dictsanitize(
-                            const._mlgw_secsourcedict, int(s[k], base=16))
+                            CONST.mlgw_secsourcedict, int(s[k], base=16))
                     if k == 14:
                         message['Payload']['Link'] = self._dictsanitize(
-                            const._mlgw_linkdict, int(s[k], base=16))
+                            CONST.mlgw_linkdict, int(s[k], base=16))
                     if k > 14:
                         message['Payload']['cmd' + str(k - 9)] = self._dictsanitize(
-                            const.beo4_commanddict, int(s[k], base=16))
+                            CONST.beo4_commanddict, int(s[k], base=16))
         return message
 
-    def _decode_action(self, telegram, message):
+    @staticmethod
+    def _decode_action(telegram, message):
         message['Zone'] = telegram[0].upper()
         message['Room'] = telegram[1].upper()
         message['Type'] = telegram[2].upper()
@@ -167,7 +168,8 @@ class MLtnClient(asynchat.async_chat):
                 message['State_Update']['STATE'] = telegram[4]
         return message
 
-    def _decode_command(self, telegram, message):
+    @staticmethod
+    def _decode_command(telegram, message):
         message['Zone'] = telegram[0].upper()
         message['Room'] = telegram[1].upper()
         message['Type'] = telegram[2].upper()
@@ -228,7 +230,7 @@ class MLtnClient(asynchat.async_chat):
                 for s in state:
                     message['State_Update'][s.split('=')[0].lower()] = s.split('=')[1].title()
                     if message['State_Update'].get('command') == ' Cmd':
-                        message['State_Update']['command'] = self._dictsanitize(const.beo4_commanddict,
+                        message['State_Update']['command'] = self._dictsanitize(CONST.beo4_commanddict,
                                                                                 int(s[13:].strip())).title()
             elif telegram[4][:7] == 'Control':
                 state = telegram[4][6:].split('&')
@@ -236,7 +238,7 @@ class MLtnClient(asynchat.async_chat):
                 for s in state:
                     message['State_Update'][s.split('=')[0].lower()] = s.split('=')[1]
                     if message['State_Update'].get('command') == ' cmd':
-                        message['State_Update']['command'] = self._dictsanitize(const.beo4_commanddict,
+                        message['State_Update']['command'] = self._dictsanitize(CONST.beo4_commanddict,
                                                                                 int(s[13:].strip())).title()
             elif telegram[4] == 'All standby':
                 message['State_Update']['command'] = telegram[4]
@@ -246,7 +248,7 @@ class MLtnClient(asynchat.async_chat):
                 for s in state:
                     if s.split('=')[0] == 'sourceUniqueId':
                         src = s.split('=')[1].split(':')[0].upper()
-                        message['State_Update']['source'] = self._srcdictsanitize(const._blgw_srcdict, src)
+                        message['State_Update']['source'] = self._srcdictsanitize(CONST.blgw_srcdict, src)
                         message['State_Update'][s.split('=')[0]] = s.split('=')[1]
                     elif s.split('=')[0] == 'nowPlayingDetails':
                         message['State_Update']['nowPlayingDetails'] = OrderedDict()
@@ -274,7 +276,6 @@ class MLtnClient(asynchat.async_chat):
         self.set_terminator(b'\r\n')
         # Create the socket
         try:
-            socket.setdefaulttimeout(3)
             self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         except socket.error, e:
             self.log.info("Error creating socket: %s" % e)
@@ -285,11 +286,11 @@ class MLtnClient(asynchat.async_chat):
         except socket.gaierror, e:
             self.log.info("\tError with address %s:%i - %s" % (self._host, self._port, e))
             self.handle_close()
-        except socket.error, e:
-            self.log.info("\tError opening connection to %s:%i - %s" % (self._host, self._port, e))
-            self.handle_close()
         except socket.timeout, e:
             self.log.info("\tSocket connection to %s:%i timed out- %s" % (self._host, self._port, e))
+            self.handle_close()
+        except socket.error, e:
+            self.log.info("\tError opening connection to %s:%i - %s" % (self._host, self._port, e))
             self.handle_close()
         else:
             self.is_connected = True
@@ -305,14 +306,14 @@ class MLtnClient(asynchat.async_chat):
         self.is_connected = False
         self.close()
 
-    def _send_cmd(self,telegram):
+    def _send_cmd(self, telegram):
         try:
-            self.push(telegram +"\r\n")
-        except socket.error, e:
-            self.log.info("Error sending data: %s" % e)
-            self.handle_close()
+            self.push(telegram + "\r\n")
         except socket.timeout, e:
             self.log.info("\tSocket connection to %s:%i timed out- %s" % (self._host, self._port, e))
+            self.handle_close()
+        except socket.error, e:
+            self.log.info("Error sending data: %s" % e)
             self.handle_close()
         else:
             self.last_sent = telegram
@@ -320,13 +321,13 @@ class MLtnClient(asynchat.async_chat):
             self.log.info(self.name + " >>-SENT--> : " + telegram)
             time.sleep(0.2)
 
-    def toggleEvents(self):
+    def toggle_events(self):
         self._send_cmd('e')
 
-    def toggleMacros(self):
+    def toggle_macros(self):
         self._send_cmd('m')
 
-    def toggleCommands(self):
+    def toggle_commands(self):
         self._send_cmd('c')
 
     def ping(self):
@@ -334,7 +335,8 @@ class MLtnClient(asynchat.async_chat):
 
     # ########################################################################################
     # ##### Utility functions
-    def _hexbyte(self, byte):
+    @staticmethod
+    def _hexbyte(byte):
         resultstr = hex(byte)
         if byte < 16:
             resultstr = resultstr[:2] + "0" + resultstr[2]
@@ -342,12 +344,13 @@ class MLtnClient(asynchat.async_chat):
 
     def _dictsanitize(self, d, s):
         result = d.get(s)
-        if result == None:
+        if result is None:
             result = "UNKNOWN (type=" + self._hexbyte(s) + ")"
         return str(result)
 
-    def _srcdictsanitize(self, d, s):
+    @staticmethod
+    def _srcdictsanitize(d, s):
         result = d.get(s)
-        if result == None:
+        if result is None:
             result = s
         return str(result)

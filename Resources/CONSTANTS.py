@@ -1,13 +1,13 @@
 # Constants for B&O telegram protocols
 # ########################################################################################
-### Config data (set on initialisation)
+# Config data (set on initialisation)
 gateway = dict()
 rooms = []
 devices = []
 available_sources = []
 
 # ########################################################################################
-### Beo4 Commands
+# Beo4 Commands
 beo4_commanddict = dict(
     [
         # Source selection:
@@ -124,10 +124,10 @@ beo4_commanddict = dict(
 )
 BEO4_CMDS = {v.upper(): k for k, v in beo4_commanddict.items()}
 
-### BeoRemote One Commands
+# BeoRemote One Commands
 beoremoteone_commanddict = dict(
     [
-        #Source, (Cmd, Unit)
+        # Source, (Cmd, Unit)
         ("TV",         (0x80, 0)),
         ("RADIO",      (0x81, 0)),
         ("TUNEIN",     (0x81, 1)),
@@ -189,13 +189,13 @@ beoremoteone_commanddict = dict(
         ("PERSONAL_8", (0xD1, 7)),
         ("TV.ON",      (0xD2, 0)),
         ("MUSIC.ON",   (0xD3, 0)),
-        ("PATTERNPLAY",(0xD3, 1)),
+        ("PATTERNPLAY", (0xD3, 1)),
     ]
 )
 
 # ########################################################################################
 # Source Activity
-_sourceactivitydict = dict(
+sourceactivitydict = dict(
     [
         (0x00, "Unknown"),
         (0x01, "Stop"),
@@ -214,7 +214,7 @@ _sourceactivitydict = dict(
 
 # ########################################################################################
 # ##### MasterLink (not MLGW)  Protocol packet constants
-_ml_telegram_type_dict = dict(
+ml_telegram_type_dict = dict(
     [
         (0x0A, "COMMAND"),
         (0x0B, "REQUEST"),
@@ -224,7 +224,7 @@ _ml_telegram_type_dict = dict(
     ]
 )
 
-_ml_command_type_dict = dict(
+ml_command_type_dict = dict(
     [
         (0x04, "MASTER_PRESENT"),
         # REQUEST_DISTRIBUTED_SOURCE: seen when a device asks what source is being distributed
@@ -242,7 +242,7 @@ _ml_command_type_dict = dict(
         (0x3C, "TIMER"),
         (0x40, "CLOCK"),
         (0x44, "TRACK_INFO"),
-        # LOCK_MANAGER_COMMAND: Lock to Determine what device issues source commands
+        # LOCKmANAGER_COMMAND: Lock to Determine what device issues source commands
         # reference: https://tidsskrift.dk/daimipb/article/download/7043/6004/0
         (0x45, "GOTO_SOURCE"),
         (0x5C, "LOCK_MANAGER_COMMAND"),
@@ -280,13 +280,13 @@ _ml_command_type_dict = dict(
         #########################################################
         # On power up all devices send out a request key telegram. If
         # no lock manager is allocated the devices send out a key_lost telegram. The Video Master (or Power
-        # Master in older implementations) then asserts a NEW_LOCK_MANAGER telegram and assumes responsibility
-        # for LOCK_MANAGER_COMMAND telegrams until a key transfer occurs.
-        (0x12, "KEY_LOST"), #?
+        # Master in older implementations) then asserts a NEW_LOCKmANAGER telegram and assumes responsibility
+        # for LOCKmANAGER_COMMAND telegrams until a key transfer occurs.
+        (0x12, "KEY_LOST"),  # ?
         # Unknown command with payload of length 1.
         # bit 0: unknown
         # bit 1: unknown
-        (0xA0, "NEW_LOCK_MANAGER"), #?
+        (0xA0, "NEW_LOCKMANAGER"),  # ?
         # Unknown command with payload of length 2
         # bit 0: unknown
         # bit 1: unknown
@@ -294,7 +294,7 @@ _ml_command_type_dict = dict(
     ]
 )
 
-_ml_command_type_request_key_subtype_dict = dict(
+ml_command_type_request_key_subtype_dict = dict(
     [
         (0x01, "Request Key"),
         (0x02, "Transfer Key"),
@@ -305,7 +305,7 @@ _ml_command_type_request_key_subtype_dict = dict(
     ]
 )
 
-_ml_activity_dict = dict(
+ml_activity_dict = dict(
     [
         (0x01, "Request Source"),
         (0x02, "Request Source"),
@@ -314,24 +314,24 @@ _ml_activity_dict = dict(
     ]
 )
 
-_ml_device_dict = dict(
+ml_device_dict = dict(
     [
-        (0xC0, "VIDEO_MASTER"),
-        (0xC1, "AUDIO_MASTER"),
-        (0xC2, "SOURCE_CENTER"),
-        (0x81, "ALL_AUDIO_LINK_DEVICES"),
-        (0x82, "ALL_VIDEO_LINK_DEVICES"),
-        (0x83, "ALL_LINK_DEVICES"),
+        (0xC0, "VIDEO MASTER"),
+        (0xC1, "AUDIO MASTER"),
+        (0xC2, "SOURCE CENTER/SLAVE DEVICE"),
+        (0x81, "ALL AUDIO LINK DEVICES"),
+        (0x82, "ALL VIDEO LINK DEVICES"),
+        (0x83, "ALL LINK DEVICES"),
         (0x80, "ALL"),
         (0xF0, "MLGW"),
         # Power Master exists in older (pre 1996?) ML implementations. Later revisions enforced the Video Master
         # as lock key manager for the system and the concept was phased out. If your system is older than 2000
         # you may see this device type on the network.
-        (0xFF, "POWER_MASTER"), #?
+        (0xFF, "POWER MASTER"),  # ?
     ]
 )
 
-_ml_pictureformatdict = dict(
+ml_pictureformatdict = dict(
     [
         (0x00, "Not known"),
         (0x01, "Known by decoder"),
@@ -344,7 +344,7 @@ _ml_pictureformatdict = dict(
     ]
 )
 
-_ml_selectedsourcedict = dict(
+ml_selectedsourcedict = dict(
     [
         (0x00, "NONE"),
         (0x0B, "TV"),
@@ -367,9 +367,9 @@ _ml_selectedsourcedict = dict(
     ]
 )
 
-_ml_trackinfo_subtype_dict = dict([(0x05, "Current Source"),(0x07, "Change Source"),])
+ml_trackinfo_subtype_dict = dict([(0x05, "Current Source"), (0x07, "Change Source"), ])
 
-_ml_selectedsource_type_dict = dict(
+ml_selectedsource_type_dict = dict(
     [
         ("VIDEO", (0x0B, 0x1F)),
         ("VIDEO_PAUSABLE", (0x15, 0x16, 0x29, 0x33)),
@@ -382,7 +382,7 @@ _ml_selectedsource_type_dict = dict(
 
 # ########################################################################################
 # ##### MLGW Protocol packet constants
-_mlgw_payloadtypedict = dict(
+mlgw_payloadtypedict = dict(
     [
         (0x01, "Beo4 Command"),
         (0x02, "Source Status"),
@@ -405,9 +405,9 @@ _mlgw_payloadtypedict = dict(
         (0x40, "Location based event"),
     ]
 )
-MLGW_PL = {v.upper(): k for k, v in _mlgw_payloadtypedict.items()}
+MLGW_PL = {v.upper(): k for k, v in mlgw_payloadtypedict.items()}
 
-_destselectordict = dict(
+destselectordict = dict(
     [
         (0x00, "Video Source"),
         (0x01, "Audio Source"),
@@ -416,41 +416,41 @@ _destselectordict = dict(
         (0x1B, "MLGW"),
     ]
 )
-CMDS_DEST = {v.upper(): k for k, v in _destselectordict.items()}
+CMDS_DEST = {v.upper(): k for k, v in destselectordict.items()}
 
-_mlgw_secsourcedict = dict([(0x00, "V.TAPE/V.MEM"),(0x01, "V.TAPE2/DVD2/V.MEM2"),])
-_mlgw_linkdict = dict([(0x00, "Local/Default Source"),(0x01, "Remote Source/Option 4 Product"),])
+mlgw_secsourcedict = dict([(0x00, "V.TAPE/V.MEM"), (0x01, "V.TAPE2/DVD2/V.MEM2")])
+mlgw_linkdict = dict([(0x00, "Local/Default Source"), (0x01, "Remote Source/Option 4 Product")])
 
-_mlgw_virtualactiondict = dict([(0x01, "PRESS"), (0x02, "HOLD"), (0x03, "RELEASE")])
+mlgw_virtualactiondict = dict([(0x01, "PRESS"), (0x02, "HOLD"), (0x03, "RELEASE")])
 
-### for '0x03: Picture and Sound Status'
-_mlgw_soundstatusdict = dict([(0x00, "Not muted"), (0x01, "Muted")])
+# for '0x03: Picture and Sound Status'
+mlgw_soundstatusdict = dict([(0x00, "Not muted"), (0x01, "Muted")])
 
-_mlgw_speakermodedict = dict(
+mlgw_speakermodedict = dict(
     [
         (0x01, "Center channel"),
         (0x02, "2ch stereo"),
         (0x03, "Front surround"),
         (0x04, "4ch stereo"),
         (0x05, "Full surround"),
-        (0xFD, "<all>"),            #  Dummy for 'Listen for all modes'
+        (0xFD, "<all>"),            # Dummy for 'Listen for all modes'
     ]
 )
 
-_mlgw_screenmutedict = dict([(0x00, "not muted"), (0x01, "muted")])
-_mlgw_screenactivedict = dict([(0x00, "not active"), (0x01, "active")])
-_mlgw_cinemamodedict = dict([(0x00, "Cinemamode=off"), (0x01, "Cinemamode=on")])
-_mlgw_stereoindicatordict = dict([(0x00, "Mono"), (0x01, "Stereo")])
+mlgw_screenmutedict = dict([(0x00, "not muted"), (0x01, "muted")])
+mlgw_screenactivedict = dict([(0x00, "not active"), (0x01, "active")])
+mlgw_cinemamodedict = dict([(0x00, "Cinema mode off"), (0x01, "Cinema mode on")])
+mlgw_stereoindicatordict = dict([(0x00, "Mono"), (0x01, "Stereo")])
 
-### for '0x04: Light and Control command'
-_mlgw_lctypedict = dict([(0x01, "LIGHT"), (0x02, "CONTROL")])
+# for '0x04: Light and Control command'
+mlgw_lctypedict = dict([(0x01, "LIGHT"), (0x02, "CONTROL")])
 
-### for '0x31: Login Status
-_mlgw_loginstatusdict = dict([(0x00, "OK"), (0x01, "FAIL")])
+# for '0x31: Login Status
+mlgw_loginstatusdict = dict([(0x00, "OK"), (0x01, "FAIL")])
 
 # ########################################################################################
 # ##### BeoLink Gateway Protocol packet constants
-_blgw_srcdict = dict(
+blgw_srcdict = dict(
     [
         ("TV",    "TV"),
         ("DVD",   "DVD"),

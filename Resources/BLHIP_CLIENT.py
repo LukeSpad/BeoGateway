@@ -6,7 +6,8 @@ import json
 import urllib
 from collections import OrderedDict
 
-import Resources.CONSTANTS as const
+import Resources.CONSTANTS as CONST
+
 
 class BLHIPClient(asynchat.async_chat):
     """Client to interact with a Beolink Gateway via the Home Integration Protocol
@@ -32,7 +33,7 @@ class BLHIPClient(asynchat.async_chat):
         self.last_received_at = time.time()
         self.last_message = {}
 
-        #Optional callback function
+        # Optional callback function
         if cb:
             self.messageCallBack = cb
         else:
@@ -87,34 +88,39 @@ class BLHIPClient(asynchat.async_chat):
                 return
 
         if len(telegram) > 4:
-            state = telegram[4].replace('?','&')
+            state = telegram[4].replace('?', '&')
             state = state.split('&')[1:]
 
             message = OrderedDict()
-            message['Zone']   = telegram[0][2:].upper()
-            message['Room']   = telegram[1].upper()
-            message['Type']   = telegram[2].upper()
+            message['Zone'] = telegram[0][2:].upper()
+            message['Room'] = telegram[1].upper()
+            message['Type'] = telegram[2].upper()
             message['Device'] = telegram[3]
             message['State_Update'] = OrderedDict()
 
             for s in state:
                 if s.split('=')[0] == "nowPlayingDetails":
-                    playDetails = s.split('=')
-                    if len(playDetails[1]) >0:
-                        playDetails = playDetails[1].split('; ')
+                    play_details = s.split('=')
+                    if len(play_details[1]) > 0:
+                        play_details = play_details[1].split('; ')
                         message['State_Update']["nowPlayingDetails"] = OrderedDict()
-                        for p in playDetails:
-                            if p.split(': ')[0] in ['track number','channel number']:
+                        for p in play_details:
+                            if p.split(': ')[0] in ['track number', 'channel number']:
                                 message['State_Update']["nowPlayingDetails"]['channel_track'] = p.split(': ')[1]
                             else:
                                 message['State_Update']["nowPlayingDetails"][p.split(': ')[0]] = p.split(': ')[1]
 
                 elif s.split('=')[0] == "sourceUniqueId":
                     src = s.split('=')[1].split(':')[0].upper()
-                    message['State_Update']['source'] = self._srcdictsanitize(const._blgw_srcdict, src)
+                    message['State_Update']['source'] = self._srcdictsanitize(CONST.blgw_srcdict, src)
                     message['State_Update'][s.split('=')[0]] = s.split('=')[1]
                 else:
                     message['State_Update'][s.split('=')[0]] = s.split('=')[1]
+
+            # call function to find channel details if type = Legacy
+            if 'nowPlayingDetails' in message['State_Update'] \
+                    and message['State_Update']['nowPlayingDetails']['type'] == 'Legacy':
+                self._get_channel_track(message)
 
             if message.get('Type') == 'BUTTON':
                 if message['State_Update'].get('STATE') == '0':
@@ -131,7 +137,7 @@ class BLHIPClient(asynchat.async_chat):
             self._report(header, state, message)
 
     def _report(self, header, payload, message):
-        #Report messages, excluding regular clock pings from gateway
+        # Report messages, excluding regular clock pings from gateway
         self.last_message = message
         if message.get('Device').upper() != 'CLOCK':
             self.log.debug(self.name + "\n" + str(json.dumps(message, indent=4)))
@@ -141,24 +147,23 @@ class BLHIPClient(asynchat.async_chat):
     def client_connect(self):
         self.log.info('Connecting to host at %s, port %i', self._host, self._port)
         self.set_terminator(b'\r\n')
-        #Create the socket
+        # Create the socket
         try:
-            socket.setdefaulttimeout(3)
             self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         except socket.error, e:
             self.log.info("Error creating socket: %s" % e)
             self.handle_close()
-        #Now connect
+        # Now connect
         try:
             self.connect((self._host, self._port))
         except socket.gaierror, e:
             self.log.info("\tError with address %s:%i - %s" % (self._host, self._port, e))
             self.handle_close()
-        except socket.error, e:
-            self.log.info("\tError opening connection to %s:%i - %s" % (self._host, self._port, e))
-            self.handle_close()
         except socket.timeout, e:
             self.log.info("\tSocket connection to %s:%i timed out- %s" % (self._host, self._port, e))
+            self.handle_close()
+        except socket.error, e:
+            self.log.info("\tError opening connection to %s:%i - %s" % (self._host, self._port, e))
             self.handle_close()
         else:
             self.is_connected = True
@@ -175,14 +180,14 @@ class BLHIPClient(asynchat.async_chat):
         self.is_connected = False
         self.close()
 
-    def send_cmd(self,telegram):
+    def send_cmd(self, telegram):
         try:
             self.push(telegram.encode("ascii") + "\r\n")
-        except socket.error, e:
-            self.log.info("Error sending data: %s" % e)
-            self.handle_close()
         except socket.timeout, e:
             self.log.info("\tSocket connection to %s:%i timed out- %s" % (self._host, self._port, e))
+            self.handle_close()
+        except socket.error, e:
+            self.log.info("Error sending data: %s" % e)
             self.handle_close()
         else:
             self.last_sent = telegram
@@ -190,10 +195,10 @@ class BLHIPClient(asynchat.async_chat):
             self.log.info(self.name + " >>-SENT--> : " + telegram)
             time.sleep(0.2)
 
-    def query(self, zone='*',room='*',dev_type='*',device='*'):
+    def query(self, zone='*', room='*', dev_type='*', device='*'):
         query = "q " + zone + "/" + room + "/" + dev_type + '/' + device
 
-        #Convert to human readable string
+        # Convert to human readable string
         if zone == '*':
             zone = ' in all zones.'
         else:
@@ -214,7 +219,7 @@ class BLHIPClient(asynchat.async_chat):
         self.log.info(self.name + ": sending state update request for" + device + dev_type + room + zone)
         self.send_cmd(query)
 
-    def statefiler(self, zone='*',room='*',dev_type='*',device='*'):
+    def statefiler(self, zone='*', room='*', dev_type='*', device='*'):
         s_filter = "f " + zone + "/" + room + "/" + dev_type + '/' + device
         self.send_cmd(s_filter)
 
@@ -226,9 +231,22 @@ class BLHIPClient(asynchat.async_chat):
     def ping(self):
         self.query('Main', 'global', 'SYSTEM', 'BeoLink')
 
-    def _srcdictsanitize(self, d, s):
+    # Utility Functions
+    @staticmethod
+    def _srcdictsanitize(d, s):
         result = d.get(s)
-        if result == None:
+        if result is None:
             result = s
         return str(result)
 
+    @staticmethod
+    def _get_channel_track(message):
+        # Check device list for channel name information
+        if CONST.devices:
+            for device in CONST.devices:
+                if device['Device'] == message['Device']:
+                    if 'channels' in device['Sources'][message["State_Update"]["source"]]:
+                        for channel in device['Sources'][message["State_Update"]["source"]]['channels']:
+                            if channel['number'] == int(message["State_Update"]['nowPlayingDetails']["channel_track"]):
+                                message["State_Update"]["nowPlaying"] = channel['name']
+                                break
