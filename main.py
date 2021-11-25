@@ -61,10 +61,12 @@ if __name__ == '__main__':
 
     # ########################################################################################
     # Main program loop
-    host = 'blgw.local'
-    port = [9000, 9100, 23]
-    user = 'admin'
-    pwd = 's0198247'
+    host = 'blgw.local' # Host address of gateway
+    port = [9000,       # MLGW protocol port - default 9000
+            9100,       # BLGW Home Integration Protocol port - default 9100
+            23]         # Telnet port - default 23
+    user = 'admin'      # User name - default is admin
+    pwd = 'admin'       # password - default is admin
 
     logging.basicConfig(level=logging.INFO)
     config = MLCONFIG.MLConfig(host, user, pwd)
