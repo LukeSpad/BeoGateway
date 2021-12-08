@@ -24,8 +24,8 @@ MLtn_CLIENT.py  Asynchat client to monitor traffic on the MasterlinkGateway
                 telnet events monitor (precursor of the HIP) - works with MLGW and BLGW
 ASBridge.py     Apple Scripting Bridge module to allow direct control of the Apple Music App via the N.Music source
 
-notify.scpt     Apple script to allow notifications in the notification centre. The script needs exporting to the Resources 
-                folder as an application, with the "Stay Open After Run Handler" option checked
+notify.scpt     Apple script to allow notifications in the notification centre. The script needs exporting to the 
+                Resources folder as an application, with the "Stay Open After Run Handler" option checked
 
 Scripts Folder:
 Green.scpt      Applescripts that are triggered when colour keys are pressed on a Beo4/Beoremote One when controlling N.Music
