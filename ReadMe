@@ -20,6 +20,6 @@ MLCLICLIENT.py  Asynchat client to monitor basic Masterlink packets on the netwo
 MLGWCLIENT.py   Asynchat client to monitor events on the MLGW protocol
 BLHIPCLIENT.py  Asynchat client to monitor traffic on the BeolinkGateway Home Integration Protocol -
                 only works with BLGW 
-MLtn_CLIENT.py Asynchat client to monitor traffic on the MasterlinkGateway
+MLtn_CLIENT.py  Asynchat client to monitor traffic on the MasterlinkGateway
                 telnet events monitor (precursor of the HIP) - works with MLGW and BLGW
 ASBridge.py     Apple Scripting Bridge module to allow direct control of the Apple Music App via the N.Music source
