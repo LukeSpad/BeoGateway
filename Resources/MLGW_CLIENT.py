@@ -118,20 +118,11 @@ class MLGWClient(asynchat.async_chat):
             message['serial_Num'] = sn
 
         elif payload_type == "Source Status":
-            if CONST.rooms and CONST.devices:
-                for device in CONST.devices:
-                    if device['MLN'] == payload[0]:
-                        name = device['Device']
-                        for room in CONST.rooms:
-                            if name in room['Products']:
-                                message["Zone"] = room['Zone'].upper()
-                                message["Room"] = room['Room_Name'].upper()
-                                message["Type"] = 'AV RENDERER'
-                                message["Device"] = name
+            self._get_device_info(message, payload)
             message["payload_type"] = payload_type
             message["MLN"] = payload[0]
             message["State_Update"] = OrderedDict()
-            message["State_Update"]["nowPlaying"] = ''
+            message["State_Update"]["nowPlaying"] = 'Unknown'
             message["State_Update"]["nowPlayingDetails"] = OrderedDict()
             message["State_Update"]["nowPlayingDetails"]["channel_track"] = \
                 self._hexword(payload[4], payload[5])
@@ -146,27 +137,26 @@ class MLGWClient(asynchat.async_chat):
             message["State_Update"]["state"] = self._getdictstr(CONST.sourceactivitydict, payload[6])
 
         elif payload_type == "Picture and Sound Status":
-            if CONST.rooms and CONST.devices:
-                for device in CONST.devices:
-                    if device['MLN'] == payload[0]:
-                        name = device['Device']
-                        for room in CONST.rooms:
-                            if name in room['Products']:
-                                message["Zone"] = room['Zone'].upper()
-                                message["Room"] = room['Room_Name'].upper()
-                                message["Type"] = 'AV RENDERER'
-                                message["Device"] = name
+            self._get_device_info(message, payload)
             message["payload_type"] = payload_type
             message["MLN"] = payload[0]
-            message["State_Update"] = OrderedDict()
-            message["State_Update"]["sound_status"] = self._getdictstr(CONST.mlgw_soundstatusdict, payload[1])
-            message["State_Update"]["speakermode"] = self._getdictstr(CONST.mlgw_speakermodedict, payload[2])
-            message["State_Update"]["stereo_mode"] = self._getdictstr(CONST.mlgw_stereoindicatordict, payload[9])
-            message["State_Update"]["screen1_mute"] = self._getdictstr(CONST.mlgw_screenmutedict, payload[4])
-            message["State_Update"]["screen1_active"] = self._getdictstr(CONST.mlgw_screenactivedict, payload[5])
-            message["State_Update"]["screen2_mute"] = self._getdictstr(CONST.mlgw_screenmutedict, payload[6])
-            message["State_Update"]["screen2_active"] = self._getdictstr(CONST.mlgw_screenactivedict, payload[7])
-            message["State_Update"]["cinema_mode"] = self._getdictstr(CONST.mlgw_cinemamodedict, payload[8])
+            message["State_Update"] = OrderedDict([("sound_status", OrderedDict()), ("picture_status", OrderedDict())])
+            message["State_Update"]["sound_status"]["mute_status"] = \
+                self._getdictstr(CONST.mlgw_soundstatusdict, payload[1])
+            message["State_Update"]["sound_status"]["speakermode"] = \
+                self._getdictstr(CONST.mlgw_speakermodedict, payload[2])
+            message["State_Update"]["sound_status"]["stereo_mode"] = \
+                self._getdictstr(CONST.mlgw_stereoindicatordict, payload[9])
+            message["State_Update"]["picture_status"]["screen1_mute"] = \
+                self._getdictstr(CONST.mlgw_screenmutedict, payload[4])
+            message["State_Update"]["picture_status"]["screen1_active"] = \
+                self._getdictstr(CONST.mlgw_screenactivedict, payload[5])
+            message["State_Update"]["picture_status"]["screen2_mute"] = \
+                self._getdictstr(CONST.mlgw_screenmutedict, payload[6])
+            message["State_Update"]["picture_status"]["screen2_active"] = \
+                self._getdictstr(CONST.mlgw_screenactivedict, payload[7])
+            message["State_Update"]["picture_status"]["cinema_mode"] = \
+                self._getdictstr(CONST.mlgw_cinemamodedict, payload[8])
             message["volume"] = int(payload[3])
 
         elif payload_type == "All standby notification":
@@ -177,7 +167,10 @@ class MLGWClient(asynchat.async_chat):
             if CONST.rooms:
                 for room in CONST.rooms:
                     if room['Room_Number'] == payload[0]:
-                        message["Zone"] = room['Zone'].upper()
+                        try:
+                            message["Zone"] = room['Zone'].upper()
+                        except KeyError:
+                            pass
                         message["Room"] = room['Room_Name'].upper()
             message["Type"] = self._getdictstr(CONST.mlgw_lctypedict, payload[1]).upper() + " COMMAND"
             message["Device"] = 'Beo4/BeoRemote One'
@@ -236,7 +229,7 @@ class MLGWClient(asynchat.async_chat):
             self.messageCallBack(self.name, str(list(header)), str(list(payload)), message)
 
     # ########################################################################################
-    # ##### mlgw send_cmder functions
+    # ##### mlgw send functions
 
     # send_cmd command to mlgw
     def _send_cmd(self, msg_type, payload):
@@ -267,6 +260,7 @@ class MLGWClient(asynchat.async_chat):
             # Sleep to allow msg to arrive
             time.sleep(0.2)
 
+    # Ping the gateway
     def ping(self):
         self._send_cmd(CONST.MLGW_PL.get("PING"), "")
 
@@ -337,31 +331,31 @@ class MLGWClient(asynchat.async_chat):
     def _getpayloadtypestr(self, payloadtype):
         result = CONST.mlgw_payloadtypedict.get(payloadtype)
         if result is None:
-            result = "UNKNOWN (type=" + self._hexbyte(payloadtype) + ")"
+            result = "UNKNOWN (type = " + self._hexbyte(payloadtype) + ")"
         return str(result)
 
     def _getbeo4commandstr(self, command):
         result = CONST.beo4_commanddict.get(command)
         if result is None:
-            result = "Cmd=" + self._hexbyte(command)
+            result = "CMD = " + self._hexbyte(command)
         return result
 
     def _getvirtualactionstr(self, action):
         result = CONST.mlgw_virtualactiondict.get(action)
         if result is None:
-            result = "Action=" + self._hexbyte(action)
+            result = "Action = " + self._hexbyte(action)
         return result
 
     def _getselectedsourcestr(self, source):
         result = CONST.ml_selectedsourcedict.get(source)
         if result is None:
-            result = "Src=" + self._hexbyte(source)
+            result = "SRC = " + self._hexbyte(source)
         return result
 
     def _getspeakermodestr(self, source):
         result = CONST.mlgw_speakermodedict.get(source)
         if result is None:
-            result = "mode=" + self._hexbyte(source)
+            result = "mode = " + self._hexbyte(source)
         return result
 
     def _getdictstr(self, mydict, mykey):
@@ -376,16 +370,40 @@ class MLGWClient(asynchat.async_chat):
             for src in CONST.available_sources:
                 if src[1] == source:
                     message["State_Update"]["sourceName"] = src[0]
-                    break
+                    return
+
+    @staticmethod
+    def _get_device_info(message, payload):
+        if CONST.rooms and CONST.devices:
+            for device in CONST.devices:
+                try:
+                    if device['MLN'] == payload[0]:
+                        name = device['Device']
+                        for room in CONST.rooms:
+                            if name in room['Products']:
+                                try:
+                                    message["Zone"] = room['Zone'].upper()
+                                except KeyError:
+                                    pass
+                                message["Room"] = room['Room_Name'].upper()
+                                message["Type"] = 'AV RENDERER'
+                                message["Device"] = name
+                                return
+                except KeyError:
+                    pass
 
     @staticmethod
     def _get_channel_track(message):
         # Check device list for channel name information
         if CONST.devices:
             for device in CONST.devices:
-                if device['Device'] == message['Device']:
-                    if 'channels' in device['Sources'][message["State_Update"]["source"]]:
-                        for channel in device['Sources'][message["State_Update"]["source"]]['channels']:
-                            if channel['number'] == int(message["State_Update"]['nowPlayingDetails']["channel_track"]):
-                                message["State_Update"]["nowPlaying"] = channel['name']
-                                break
+                try:
+                    if device['Device'] == message['Device']:
+                        if 'channels' in device['Sources'][message["State_Update"]["source"]]:
+                            for channel in device['Sources'][message["State_Update"]["source"]]['channels']:
+                                if channel['number'] == int(
+                                        message["State_Update"]['nowPlayingDetails']["channel_track"]):
+                                    message["State_Update"]["nowPlaying"] = channel['name']
+                                    return
+                except KeyError:
+                    pass

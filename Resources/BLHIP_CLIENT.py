@@ -173,7 +173,7 @@ class BLHIPClient(asynchat.async_chat):
         self.log.info("\tAttempting to Authenticate...")
         self.send_cmd(self._user)
         self.send_cmd(self._pwd)
-        self.statefiler()
+        self.statefilter()
 
     def handle_close(self):
         self.log.info(self.name + ": Closing socket")
@@ -219,7 +219,7 @@ class BLHIPClient(asynchat.async_chat):
         self.log.info(self.name + ": sending state update request for" + device + dev_type + room + zone)
         self.send_cmd(query)
 
-    def statefiler(self, zone='*', room='*', dev_type='*', device='*'):
+    def statefilter(self, zone='*', room='*', dev_type='*', device='*'):
         s_filter = "f " + zone + "/" + room + "/" + dev_type + '/' + device
         self.send_cmd(s_filter)
 
@@ -241,12 +241,16 @@ class BLHIPClient(asynchat.async_chat):
 
     @staticmethod
     def _get_channel_track(message):
-        # Check device list for channel name information
-        if CONST.devices:
-            for device in CONST.devices:
-                if device['Device'] == message['Device']:
-                    if 'channels' in device['Sources'][message["State_Update"]["source"]]:
-                        for channel in device['Sources'][message["State_Update"]["source"]]['channels']:
-                            if channel['number'] == int(message["State_Update"]['nowPlayingDetails']["channel_track"]):
-                                message["State_Update"]["nowPlaying"] = channel['name']
-                                break
+        try:
+            # Check device list for channel name information
+            if CONST.devices:
+                for device in CONST.devices:
+                    if device['Device'] == message['Device']:
+                        if 'channels' in device['Sources'][message["State_Update"]["source"]]:
+                            for channel in device['Sources'][message["State_Update"]["source"]]['channels']:
+                                if channel['number'] == int(
+                                        message["State_Update"]['nowPlayingDetails']["channel_track"]):
+                                    message["State_Update"]["nowPlaying"] = channel['name']
+                                    break
+        except KeyError:
+            pass

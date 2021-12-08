@@ -66,19 +66,22 @@ class MLtnClient(asynchat.async_chat):
                     self.handle_close()
 
         else:
-            self._decode(items)
+            try:
+                self._decode(items)
+            except IndexError:
+                self.log.debug(str(list(items)))
 
         self._received_data = ""
-        self.last_sent = ''
-        self.last_sent_at = 0
-        self.last_received = ''
-        self.last_received_at = 0
 
     def _decode(self, items):
         header = items[3][:-1]
         telegram_starts = len(''.join(items[:4])) + 4
         telegram = self._received_data[telegram_starts:].replace('!', '').split('/')
         message = OrderedDict()
+
+        if telegram[0] == 'Monitor events ( keys: M, E, C, (spc), Q ) ----':
+            self.toggle_commands()
+            self.toggle_macros()
 
         if header == 'integration_protocol':
             message = self._decode_ip(telegram, message)
@@ -322,13 +325,25 @@ class MLtnClient(asynchat.async_chat):
             time.sleep(0.2)
 
     def toggle_events(self):
-        self._send_cmd('e')
+        try:
+            self.push('e')
+        except socket.error, e:
+            self.log.info("Error sending data: %s" % e)
+            self.handle_close()
 
     def toggle_macros(self):
-        self._send_cmd('m')
+        try:
+            self.push('m')
+        except socket.error, e:
+            self.log.info("Error sending data: %s" % e)
+            self.handle_close()
 
     def toggle_commands(self):
-        self._send_cmd('c')
+        try:
+            self.push('c')
+        except socket.error, e:
+            self.log.info("Error sending data: %s" % e)
+            self.handle_close()
 
     def ping(self):
         self._send_cmd('')

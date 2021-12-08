@@ -84,7 +84,7 @@ class MLCLIClient(asynchat.async_chat):
                     for item in items:
                         try:
                             telegram.append(int(item[:-1], base=16))
-                        except TypeError:
+                        except (ValueError, TypeError):
                             # abort if invalid character found
                             self.log.debug('Invalid character ' + str(item) + ' found in telegram: ' +
                                            ''.join(items) + '\nAborting!')
@@ -192,37 +192,35 @@ class MLCLIClient(asynchat.async_chat):
     def _decode(self, telegram):
         # Decode header
         message = OrderedDict()
-        if CONST.devices:
-            for device in CONST.devices:
-                if device['ML_ID'] == telegram[1]:
-                    message["Zone"] = device["Zone"].upper()
-                    message["Room"] = device["Room"].uppr()
-                    message["Type"] = "AV RENDERER"
-                    message["Device"] = device["Device"]
-                    break
-        message["from_device"] = self._dictsanitize(CONST.ml_device_dict, telegram[1])
+        self._get_device_info(message, telegram)
+        message["from_device"] = self._get_device_name(self._dictsanitize(CONST.ml_device_dict, telegram[1]))
         message["from_source"] = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[5])
-        message["to_device"] = self._dictsanitize(CONST.ml_device_dict, telegram[0])
+        message["to_device"] = self._get_device_name(self._dictsanitize(CONST.ml_device_dict, telegram[0]))
         message["to_source"] = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[4])
         message["type"] = self._dictsanitize(CONST.ml_telegram_type_dict, telegram[3])
         message["payload_type"] = self._dictsanitize(CONST.ml_command_type_dict, telegram[7])
         message["payload_len"] = telegram[8] + 1
         message["State_Update"] = OrderedDict()
 
+        # RELEASE command signifies product standby
+        if message.get("payload_type") in ["RELEASE", "STANDBY"]:
+            message["State_Update"]["state"] = 'Standby'
+
         # source status info
         # TTFF__TYDSOS__PTLLPS SR____LS______SLSHTR__ACSTPI________________________TRTR______
         if message.get("payload_type") == "STATUS_INFO":
-            message["State_Update"]["nowPlaying"] = ''
+            message["State_Update"]["nowPlaying"] = 'Unknown'
             message["State_Update"]["nowPlayingDetails"] = OrderedDict()
             message["State_Update"]["nowPlayingDetails"]["local_source"] = telegram[13]
-            message["State_Update"]["nowPlayingDetails"]["type"] = telegram[22]
+            message["State_Update"]["nowPlayingDetails"]["type"] = \
+                self._dictsanitize(CONST.ml_sourcekind_dict, telegram[22])
             if telegram[8] < 27:
                 message["State_Update"]["nowPlayingDetails"]["channel_track"] = telegram[19]
             else:
                 message["State_Update"]["nowPlayingDetails"]["channel_track"] = telegram[36] * 256 + telegram[37]
             message["State_Update"]["nowPlayingDetails"]["source_medium_position"] = \
                 self._hexword(telegram[18], telegram[17])
-            message["State_Update"]["nowPlayingDetails"]["picture_identifier"] = \
+            message["State_Update"]["nowPlayingDetails"]["picture_format"] = \
                 self._dictsanitize(CONST.ml_pictureformatdict, telegram[23])
             source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[10])
             self._get_source_name(source, message)
@@ -257,7 +255,7 @@ class MLCLIClient(asynchat.async_chat):
 
         # audio track info long
         if message.get("payload_type") == "TRACK_INFO_LONG":
-            message["State_Update"]["nowPlaying"] = ''
+            message["State_Update"]["nowPlaying"] = 'Unknown'
             message["State_Update"]["nowPlayingDetails"] = OrderedDict()
             message["State_Update"]["nowPlayingDetails"]["type"] = \
                 self._get_type(CONST.ml_selectedsource_type_dict, telegram[11])
@@ -271,7 +269,7 @@ class MLCLIClient(asynchat.async_chat):
 
         # video track info
         if message.get("payload_type") == "VIDEO_TRACK_INFO":
-            message["State_Update"]["nowPlaying"] = ''
+            message["State_Update"]["nowPlaying"] = 'Unknown'
             message["State_Update"]["nowPlayingDetails"] = OrderedDict()
             message["State_Update"]["nowPlayingDetails"]["source_type"] = \
                 self._get_type(CONST.ml_selectedsource_type_dict, telegram[13])
@@ -286,6 +284,8 @@ class MLCLIClient(asynchat.async_chat):
         # track change info
         if message.get("payload_type") == "TRACK_INFO":
             message["State_Update"]["subtype"] = self._dictsanitize(CONST.ml_trackinfo_subtype_dict, telegram[9])
+
+            # Change source
             if message["State_Update"].get("subtype") == "Change Source":
                 message["State_Update"]["prev_source"] = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
                 message["State_Update"]["prev_sourceID"] = telegram[11]
@@ -297,6 +297,7 @@ class MLCLIClient(asynchat.async_chat):
                     message["State_Update"]["source"] = source
                     message["State_Update"]["sourceID"] = telegram[22]
 
+            # Current Source
             if message["State_Update"].get("subtype") == "Current Source":
                 source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
                 self._get_source_name(source, message)
@@ -308,7 +309,7 @@ class MLCLIClient(asynchat.async_chat):
 
         # goto source
         if message.get("payload_type") == "GOTO_SOURCE":
-            message["State_Update"]["nowPlaying"] = ''
+            message["State_Update"]["nowPlaying"] = 'Unknown'
             message["State_Update"]["nowPlayingDetails"] = OrderedDict()
             message["State_Update"]["nowPlayingDetails"]["source_type"] = \
                 self._get_type(CONST.ml_selectedsource_type_dict, telegram[11])
@@ -373,6 +374,27 @@ class MLCLIClient(asynchat.async_chat):
                             if channel['number'] == message["State_Update"]["nowPlayingDetails"]["channel_track"]:
                                 message["State_Update"]["nowPlaying"] = channel['name']
                                 return
+
+    def _get_device_info(self, message, telegram):
+        if CONST.devices:
+            for device in CONST.devices:
+                if device['ML_ID'] == self._dictsanitize(CONST.ml_device_dict, telegram[1]):
+                    try:
+                        message["Zone"] = device['Zone'].upper()
+                    except KeyError:
+                        pass
+                    message["Room"] = device["Room"].upper()
+                    message["Type"] = "AV RENDERER"
+                    message["Device"] = device["Device"]
+                    break
+
+    @staticmethod
+    def _get_device_name(dev):
+        if CONST.devices:
+            for device in CONST.devices:
+                if device['ML_ID'] == dev:
+                    return device['Device']
+            return dev
 
     @staticmethod
     def _get_source_name(source, message):

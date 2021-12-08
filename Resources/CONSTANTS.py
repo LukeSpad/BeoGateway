@@ -1,10 +1,30 @@
 # Constants for B&O telegram protocols
 # ########################################################################################
 # Config data (set on initialisation)
-gateway = dict()
+gateway = dict([("Current Audio Source", ''), ("Current Video Source", '')])
 rooms = []
 devices = []
 available_sources = []
+
+# ########################################################################################
+# Source Types
+
+source_type_dict = dict(
+    [
+        ("Video Sources", ("TV", "V.AUX/DTV2", "MEDIA", "V.TAPE/V.MEM/DVD2", "DVD", "CAMERA",
+                           "SAT/DTV", "PC", "WEB", "DOORCAM", "PHOTO", "USB2", "WEBMEDIA", "AV.IN",
+                           "HOMEMEDIA", "DNLA", "RECORDINGS", "CAMERA", "USB", "DNLA-DMR", "YOUTUBE",
+                           "HOME.APP", "HDMI_1", "HDMI_2", "HDMI_3", "HDMI_4", "HDMI_5", "HDMI_6",
+                           "HDMI_7", "HDMI_8", "MATRIX_1", "MATRIX_2", "MATRIX_3", "MATRIX_4", "MATRIX_5",
+                           "MATRIX_6", "MATRIX_7", "MATRIX_8", "MATRIX_9", "MATRIX_10", "MATRIX_11",
+                           "MATRIX_12", "MATRIX_13", "MATRIX_14", "MATRIX_15", "MATRIX_16", "PERSONAL_1",
+                           "PERSONAL_2", "PERSONAL_3", "PERSONAL_4", "PERSONAL_5", "PERSONAL_6", "PERSONAL_7",
+                           "PERSONAL_8")),
+        ("Audio Sources", ("RADIO", "A.AUX", "A.TAPE/A.MEM", "CD", "PHONO/N.RADIO", "A.TAPE2/N.MUSIC",
+                           "SERVER", "SPOTIFY", "CD2/JOIN", "TUNEIN", "DVB_RADIO", "LINE.IN", "BLUETOOTH",
+                           "MUSIC", "AIRPLAY", "SPOTIFY", "DEEZER", "QPLAY"))
+    ]
+)
 
 # ########################################################################################
 # Beo4 Commands
@@ -18,7 +38,7 @@ beo4_commanddict = dict(
         (0x82, "V.Aux/DTV2"),
         (0x83, "A.Aux"),
         (0x84, "Media"),
-        (0x85, "V.Tape/V.Mem/DVD2"),
+        (0x85, "V.Tape/V.Mem"),
         (0x86, "DVD"),
         (0x87, "Camera"),
         (0x88, "Text"),
@@ -350,9 +370,9 @@ ml_selectedsourcedict = dict(
         (0x0B, "TV"),
         (0x15, "V.TAPE/V.MEM"),
         (0x16, "DVD2"),
-        (0x1F, "DTV"),
+        (0x1F, "SAT/DTV"),
         (0x29, "DVD"),
-        (0x33, "V.AUX"),
+        (0x33, "V.AUX/DTV2"),
         (0x3E, "DOORCAM"),
         (0x47, "PC"),
         (0x6F, "RADIO"),
@@ -368,6 +388,8 @@ ml_selectedsourcedict = dict(
 )
 
 ml_trackinfo_subtype_dict = dict([(0x05, "Current Source"), (0x07, "Change Source"), ])
+
+ml_sourcekind_dict = dict([(0x01, "audio source"), (0x02, "video source"), (0xFF, "undefined")])
 
 ml_selectedsource_type_dict = dict(
     [
