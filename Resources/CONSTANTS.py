@@ -1,7 +1,14 @@
 # Constants for B&O telegram protocols
 # ########################################################################################
 # Config data (set on initialisation)
-gateway = dict([("Current Audio Source", ''), ("Current Video Source", '')])
+gateway = dict(
+    [
+        ("Current Audio Source", 'Unknown'),
+        ("Current Video Source", 'Unknown'),
+        ("Now Playing", 'Unknown'),
+        ("N.MUSIC Renderers", [])
+    ]
+)
 rooms = []
 devices = []
 available_sources = []
@@ -13,7 +20,7 @@ source_type_dict = dict(
     [
         ("Video Sources", ("TV", "V.AUX/DTV2", "MEDIA", "V.TAPE/V.MEM/DVD2", "DVD", "CAMERA",
                            "SAT/DTV", "PC", "WEB", "DOORCAM", "PHOTO", "USB2", "WEBMEDIA", "AV.IN",
-                           "HOMEMEDIA", "DNLA", "RECORDINGS", "CAMERA", "USB", "DNLA-DMR", "YOUTUBE",
+                           "HOMEMEDIA", "DVB_RADIO", "DNLA", "RECORDINGS", "CAMERA", "USB", "DNLA-DMR", "YOUTUBE",
                            "HOME.APP", "HDMI_1", "HDMI_2", "HDMI_3", "HDMI_4", "HDMI_5", "HDMI_6",
                            "HDMI_7", "HDMI_8", "MATRIX_1", "MATRIX_2", "MATRIX_3", "MATRIX_4", "MATRIX_5",
                            "MATRIX_6", "MATRIX_7", "MATRIX_8", "MATRIX_9", "MATRIX_10", "MATRIX_11",
@@ -262,9 +269,9 @@ ml_command_type_dict = dict(
         (0x3C, "TIMER"),
         (0x40, "CLOCK"),
         (0x44, "TRACK_INFO"),
-        # LOCKmANAGER_COMMAND: Lock to Determine what device issues source commands
-        # reference: https://tidsskrift.dk/daimipb/article/download/7043/6004/0
         (0x45, "GOTO_SOURCE"),
+        # LOCKMANAGER_COMMAND: Lock to Determine what device issues source commands
+        # reference: https://tidsskrift.dk/daimipb/article/download/7043/6004/0
         (0x5C, "LOCK_MANAGER_COMMAND"),
         (0x6C, "DISTRIBUTION_REQUEST"),
         (0x82, "TRACK_INFO_LONG"),
@@ -301,7 +308,8 @@ ml_command_type_dict = dict(
         # On power up all devices send out a request key telegram. If
         # no lock manager is allocated the devices send out a key_lost telegram. The Video Master (or Power
         # Master in older implementations) then asserts a NEW_LOCKmANAGER telegram and assumes responsibility
-        # for LOCKmANAGER_COMMAND telegrams until a key transfer occurs.
+        # for LOCKMANAGER_COMMAND telegrams until a key transfer occurs.
+        # reference: https://tidsskrift.dk/daimipb/article/download/7043/6004/0
         (0x12, "KEY_LOST"),  # ?
         # Unknown command with payload of length 1.
         # bit 0: unknown
@@ -344,9 +352,11 @@ ml_device_dict = dict(
         (0x83, "ALL LINK DEVICES"),
         (0x80, "ALL"),
         (0xF0, "MLGW"),
+        (0x21, "BLC NL/ML"),
         # Power Master exists in older (pre 1996?) ML implementations. Later revisions enforced the Video Master
         # as lock key manager for the system and the concept was phased out. If your system is older than 2000
         # you may see this device type on the network.
+        # reference: https://tidsskrift.dk/daimipb/article/download/7043/6004/0
         (0xFF, "POWER MASTER"),  # ?
     ]
 )
@@ -433,7 +443,7 @@ destselectordict = dict(
     [
         (0x00, "Video Source"),
         (0x01, "Audio Source"),
-        (0x05, "V.TAPE/V.MEM"),
+        (0x05, "Secondary Video Source (V.TAPE/V.MEM)"),
         (0x0F, "All Products"),
         (0x1B, "MLGW"),
     ]
@@ -451,9 +461,9 @@ mlgw_soundstatusdict = dict([(0x00, "Not muted"), (0x01, "Muted")])
 mlgw_speakermodedict = dict(
     [
         (0x01, "Center channel"),
-        (0x02, "2ch stereo"),
+        (0x02, "2 channel stereo"),
         (0x03, "Front surround"),
-        (0x04, "4ch stereo"),
+        (0x04, "4 channel stereo"),
         (0x05, "Full surround"),
         (0xFD, "<all>"),            # Dummy for 'Listen for all modes'
     ]

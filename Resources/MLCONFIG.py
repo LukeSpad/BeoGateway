@@ -103,8 +103,11 @@ class MLConfig:
                     for selectCmd in source["selectCmds"]:
                         if gateway_type == 'blgw':
                             # get source information from the BLGW config file
-                            source_id = str(source['sourceId'].split(':')[0])
-                            source_id = self._srcdictsanitize(CONST.blgw_srcdict, source_id).upper()
+                            if str(source['sourceId']) == '':
+                                source_id = self._srcdictsanitize(CONST.beo4_commanddict, source['selectID']).upper()
+                            else:
+                                source_id = str(source['sourceId'].split(':')[0])
+                                source_id = self._srcdictsanitize(CONST.blgw_srcdict, source_id).upper()
                             device['Sources'][str(source["name"])]['source'] = source_id
                             device['Sources'][str(source["name"])]['uniqueID'] = str(source['sourceId'])
                         else:
@@ -142,7 +145,7 @@ class MLConfig:
         self.log.info('\tFound ' + str(len(CONST.available_sources)) + ' Available Sources [Name, Type]:')
         for i in range(len(CONST.available_sources)):
             self.log.info('\t\t' + str(list(CONST.available_sources[i])))
-        self.log.info('Done!\n')
+        self.log.info('\tDone!\n')
 
         self.log.debug(json.dumps(CONST.gateway, indent=4))
         self.log.debug(json.dumps(CONST.rooms, indent=4))
@@ -169,6 +172,7 @@ class MLConfig:
                                     mlcli.last_message['State_Update']['command'] == "Light Timeout":
 
                                 device['ML_ID'] = mlcli.last_message.get('to_device')
+                                device['Serial_num'] = 'NA'
                                 self.log.info("\tMasterLink ID of product " +
                                               device.get('Device') + " is " + device.get('ML_ID') + ".\n")
                                 test = False
@@ -177,9 +181,14 @@ class MLConfig:
 
                 else:
                     # If this is a NetLink product then it has a serial number and no ML_ID
-                    device['ML_ID'] = 'NA'
-                    self.log.info("\tNetworkLink ID of product " + device.get('Device') + " is " + 
-                                  device.get('Serial_num') + ". No MasterLink ID assigned.\n")
+                    if device['Device'] == 'BeoMaster 7000':
+                        device['ML_ID'] = "AUDIO MASTER"
+                        self.log.info("\tNetworkLink ID of product " + device.get('Device') + " is " +
+                                      device.get('Serial_num') + ". MasterLink ID manually assigned to AUDIO MASTER.\n")
+                    else:
+                        device['ML_ID'] = 'NA'
+                        self.log.info("\tNetworkLink ID of product " + device.get('Device') + " is " +
+                                      device.get('Serial_num') + ". No MasterLink ID assigned.\n")
 
                 self.log.debug(json.dumps(device, indent=4))
 

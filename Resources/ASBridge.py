@@ -1,13 +1,14 @@
 #!/usr/bin/python
 import os
+import unicodedata
 from Foundation import NSAppleScript
 from ScriptingBridge import SBApplication
 
 ''' Module defining a MusicController class for Apple Music, enables:
         basic transport control of the player, 
         query of player status, 
-        playing existing playlists, and 
-        running external appleScripts for more complex control
+        playing existing playlists,  
+        running external appleScripts for more complex control, and
         reporting messages in the notification centre'''
 
 PLAYSTATE = dict([
@@ -26,9 +27,14 @@ class MusicController(object):
 
     # Player information
     def get_current_track_info(self):
-        name = str(self.app.currentTrack().name())
-        album = str(self.app.currentTrack().album())
-        artist = str(self.app.currentTrack().artist())
+        name = self.app.currentTrack().name()
+        album = self.app.currentTrack().album()
+        artist = self.app.currentTrack().artist()
+        if name:
+            # Deal with tracks with non-ascii characters such as accents
+            name = unicodedata.normalize('NFD', name).encode('ascii', 'ignore')
+            album = unicodedata.normalize('NFD', album).encode('ascii', 'ignore')
+            artist = unicodedata.normalize('NFD', artist).encode('ascii', 'ignore')
         return [name, album, artist]
 
     def get_current_play_state(self):
@@ -48,6 +54,7 @@ class MusicController(object):
         elif PLAYSTATE.get(self.app.playerState()) == 'Pause':
             self.app.playpause()
         elif PLAYSTATE.get(self.app.playerState()) == 'Stop':
+            self. app.setValue_forKey_('true', 'shuffleEnabled')
             playlist = self.app.sources().objectWithName_("Library")
             playlist.playOnce_(None)
 
@@ -79,6 +86,12 @@ class MusicController(object):
 
     # ########################################################################################
     # More complex playback control functions
+    def shuffle(self):
+        if self.app.shuffleEnabled():
+            self.app.setValue_forKey_('false', 'shuffleEnabled')
+        else:
+            self.app.setValue_forKey_('true', 'shuffleEnabled')
+
     def set_current_track_position(self, time, mode='Relative'):
         if mode == 'Relative':
             # Set playback position in seconds relative to current position
@@ -102,10 +115,10 @@ class MusicController(object):
         s.executeAndReturnError_(None)
 
     @staticmethod
-    def notify(message):
+    def notify(message, subtitle):
         # Post message in notification center
         path = os.path.dirname(os.path.abspath(__file__))
         script = 'tell application "' + path + '/Notify.app" to notify("BeoGateway", "' + \
-                 message + '")'
+                 message + '", "' + subtitle + '")'
         s = NSAppleScript.alloc().initWithSource_(script)
         s.executeAndReturnError_(None)

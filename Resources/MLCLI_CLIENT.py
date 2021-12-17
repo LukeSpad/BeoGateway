@@ -193,7 +193,10 @@ class MLCLIClient(asynchat.async_chat):
         # Decode header
         message = OrderedDict()
         self._get_device_info(message, telegram)
-        message["from_device"] = self._get_device_name(self._dictsanitize(CONST.ml_device_dict, telegram[1]))
+        if 'Device' not in message:
+            # If ML telegram has been matched to a Masterlink node in the devices list then the 'from_device'
+            # key is redundant - it will always be identical to the 'Device' key
+            message["from_device"] = self._dictsanitize(CONST.ml_device_dict, telegram[1])
         message["from_source"] = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[5])
         message["to_device"] = self._get_device_name(self._dictsanitize(CONST.ml_device_dict, telegram[0]))
         message["to_source"] = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[4])
@@ -252,6 +255,10 @@ class MLCLIClient(asynchat.async_chat):
             message["State_Update"]["sourceID"] = telegram[10]
             message["State_Update"]["source_type"] = self._get_type(CONST.ml_selectedsource_type_dict, telegram[10])
             message["State_Update"]["command"] = self._dictsanitize(CONST.beo4_commanddict, telegram[11])
+            if message["State_Update"]["command"] == 'Go/Play':
+                message["State_Update"]["state"] = 'Play'
+            elif message["State_Update"]["command"] in ['Standby', 'Stop', 'Wind', 'Rewind']:
+                message["State_Update"]["state"] = message["State_Update"]["command"]
 
         # audio track info long
         if message.get("payload_type") == "TRACK_INFO_LONG":
@@ -304,6 +311,8 @@ class MLCLIClient(asynchat.async_chat):
                 message["State_Update"]["source"] = source
                 message["State_Update"]["sourceID"] = telegram[11]
                 message["State_Update"]["source_type"] = self._get_type(CONST.ml_selectedsource_type_dict, telegram[11])
+                # This device is playing
+                message["State_Update"]["state"] = 'Play'
             else:
                 message["State_Update"]["subtype"] = "Undefined: " + self._hexbyte(telegram[9])
 
@@ -319,6 +328,8 @@ class MLCLIClient(asynchat.async_chat):
             message["State_Update"]["source"] = source
             message["State_Update"]["sourceID"] = telegram[11]
             self._get_channel_track(telegram, message)
+            # Device sending goto source command is playing
+            message["State_Update"]["state"] = 'Play'
 
         # remote request
         if message.get("payload_type") == "MLGW_REMOTE_BEO4":
