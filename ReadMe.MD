@@ -162,7 +162,7 @@ Home Integration Protocol allows external applications to directly interact with
 by means of a minimalist line-based protocol that directly transports the text representation of all
 activity.  
  
->A resource is uniquely identified by the combination of area, zone, type and name, and is represented
+>A resource is uniquely identified by the combination of zone, room, type and name, and is represented
 uniquely in string form as a path with the form zone/room/type/name. 
 >
 >For example:
