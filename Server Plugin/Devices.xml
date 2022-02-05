@@ -1,0 +1,157 @@
+<?xml version="1.0"?>
+<Devices>
+	<Device type="custom" id="BOGateway">
+		<Name>B&amp;O Gateway (MLGW, BLGW)</Name>
+		<ConfigUI>
+			<Field type="textfield" id="address" defaultValue="1" hidden="True">
+			</Field>
+			<Field type="textfield" id="isBLGW" defaultValue="BLGW">
+				<Label>Gateway Type (MLGW/BLGW):</Label>
+			</Field>
+			<Field type="textfield" id="serial_no" defaultValue="NA">
+				<Label>Serial Number:</Label>
+			</Field>
+			<Field type="textfield" id="installer" defaultValue="NA">
+				<Label>Installer:</Label>
+			</Field>
+			<Field type="textfield" id="project" defaultValue="NA">
+				<Label>Project:</Label>
+			</Field>
+			<Field type="textfield" id="contact" defaultValue="NA">
+				<Label>Contact:</Label>
+			</Field>
+		</ConfigUI>
+		<States>
+			<State  id="currentAudioSource">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Audio Source Changed</TriggerLabel>
+				<ControlPageLabel>Current Audio Source is</ControlPageLabel>
+			</State>
+			<State  id="currentAudioSourceName">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Audio SourceName Changed</TriggerLabel>
+				<ControlPageLabel>Current Audio SourceName is</ControlPageLabel>
+			</State>
+			<State  id="nowPlaying">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Now Playing</TriggerLabel>
+				<ControlPageLabel>Now Playing</ControlPageLabel>
+			</State>
+			<State  id="nAudioRenderers">
+				<ValueType>Integer</ValueType>
+				<TriggerLabel>Count of Active Audio Renderers</TriggerLabel>
+				<ControlPageLabel>Count of Active Audio Renderers</ControlPageLabel>
+			</State>
+			<State  id="AudioRenderers">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Names of Active Audio Renderers</TriggerLabel>
+				<ControlPageLabel>Names of Active Audio Renderers</ControlPageLabel>
+			</State>
+			<State  id="nVideoRenderers">
+				<ValueType>Integer</ValueType>
+				<TriggerLabel>Count of Active Video Renderers</TriggerLabel>
+				<ControlPageLabel>Count of Active Video Renderers</ControlPageLabel>
+			</State>
+			<State  id="VideoRenderers">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Names of Active Video Renderers</TriggerLabel>
+				<ControlPageLabel>Names of Active Video Renderers</ControlPageLabel>
+			</State>
+		</States>
+	</Device>
+
+	<Device type="relay" id="AVrenderer">
+		<Name>AV renderer (Beovision, Beosound)</Name>
+		<ConfigUI>
+			<Field type="textfield" id="address" defaultValue="0">
+				<Label>Masterlink Node:</Label>
+			</Field>
+			<Field type="textfield" id="mlid" defaultValue="NA">
+				<Label>Masterlink ID:</Label>
+			</Field>
+			<Field type="textfield" id="serial_no" defaultValue="NA">
+				<Label>Serial Number:</Label>
+			</Field>
+			<Field type="textfield" id="zone" defaultValue="NA">
+				<Label>Zone:</Label>
+			</Field>
+			<Field type="textfield" id="room" defaultValue="NA">
+				<Label>Room:</Label>
+			</Field>
+			<Field type="textfield" id="roomnum" defaultValue="NA">
+				<Label>Room Number:</Label>
+			</Field>
+		</ConfigUI>
+		<States>
+			<State id="playState">
+				<ValueType>
+					<List>
+						<Option value="Unknown">Unknown</Option>
+						<Option value="None">None</Option>
+						<Option value="Stop">Stopped</Option>
+						<Option value="Play">Playing</Option>
+						<Option value="Wind">Wind</Option>
+						<Option value="Rewind">Rewind</Option>
+						<Option value="RecordLock">Record Lock</Option>
+						<Option value="Standby">Standby</Option>
+						<Option value="No_Media">No Media</Option>
+						<Option value="Still_Picture">Still Picture</Option>
+						<Option value="Scan_Forward">Scan Forwards</Option>
+						<Option value="Scan_Reverse">Scan Reverse</Option>
+						<Option value="Blank">Blank Status</Option>
+					</List>
+				</ValueType>
+				<TriggerLabel>Player Status Changed</TriggerLabel>
+				<TriggerLabelPrefix>Player Status is</TriggerLabelPrefix>
+				<ControlPageLabel>Current Player Status</ControlPageLabel>
+				<ControlPageLabelPrefix>Player Status is</ControlPageLabelPrefix>
+			</State>
+			<State  id="mute">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Mute</TriggerLabel>
+				<ControlPageLabel>Mute</ControlPageLabel>
+			</State>
+			<State  id="volume">
+				<ValueType>Integer</ValueType>
+				<TriggerLabel>Current Volume</TriggerLabel>
+				<ControlPageLabel>Current Volume</ControlPageLabel>
+			</State>
+			<State id="sep1">
+			        <ValueType>Separator</ValueType>
+			</State>
+			<!-- SourceMediumPosition is the CD number representation for BeoSound 9000
+			<State  id="sourceMediumPosition">
+				<ValueType>Integer</ValueType>
+				<TriggerLabel>Source Medium Position</TriggerLabel>
+				<ControlPageLabel>Source Medium Position</ControlPageLabel>
+			 </State>
+			 -->
+			<State  id="channelTrack">
+				<ValueType>Integer</ValueType>
+				<TriggerLabel>Channel/Track</TriggerLabel>
+				<ControlPageLabel>Channel/Track</ControlPageLabel>
+			</State>
+			<State  id="nowPlaying">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Now Playing</TriggerLabel>
+				<ControlPageLabel>Now Playing</ControlPageLabel>
+			</State>
+			<State id="sep1">
+			        <ValueType>Separator</ValueType>
+			</State>
+			<State  id="source">
+				<ValueType>
+					<List>
+						<Option value="Unknown">Unknown</Option>
+						<Option value="Standby">Standby</Option>
+					</List>
+				</ValueType>
+				<TriggerLabel>Source Changed</TriggerLabel>
+				<TriggerLabelPrefix>Source is</TriggerLabelPrefix>
+				<ControlPageLabel>Current Source</ControlPageLabel>
+				<ControlPageLabelPrefix>Source is</ControlPageLabelPrefix>
+			</State>
+		</States>
+		<UiDisplayStateId>playState</UiDisplayStateId>
+	</Device>
+</Devices>

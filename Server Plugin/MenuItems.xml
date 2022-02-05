@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<MenuItems>
+    <MenuItem id="menu1">
+        <Name>Request Gateway Serial Number</Name>
+        <CallbackMethod>request_serial_number</CallbackMethod>
+    </MenuItem>
+    <MenuItem id="menu2">
+        <Name>Request Device State Update</Name>
+        <CallbackMethod>request_device_update</CallbackMethod>
+    </MenuItem>
+    <MenuItem id="menu3">
+        <Name>Reset Gateway Client Connections</Name>
+        <CallbackMethod>reset_clients</CallbackMethod>
+    </MenuItem>
+</MenuItems>
