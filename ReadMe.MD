@@ -1,10 +1,11 @@
-#BeoGateway: *Indigo Server Plugin for Bang and Olufsen AV Systems*
+<h1>BeoGateway: Indigo Server Plugin for Bang and Olufsen AV Systems
 
 ![](Resources/Bang-Olufsen-Logo.png)
 
 *Please note this plugin is not endorsed or affiliated with Bang & Olufsen in any way*
 
-##Introduction
+<h2>Introduction
+	
 Plugin for the [Indigo Domotics](https://www.indigodomo.com) Home Automation software allowing integration and control of Bang and Olufsen AV systems. 
 The plugin provides the following functionality:
 
@@ -27,11 +28,13 @@ The plugin provides the following functionality:
   
 [1]: Via the [HomeKit Bridge](https://www.indigodomo.com/pluginstore/172/) Plugin 
 
-##Requirements
+<h2>Requirements
+	
 Compatible with legacy DataLink (via 1611 converter), MasterLink, and modern NetworkLink products, including the BeoLink Converter ML/NL.
 The code requires a MasterLink or BeoLink Gateway to run - it is untested with the BeoLiving Intelligence
 
-##Basic Setup and Use
+<h2>Basic Setup and Use
+	
 1. Install the plugin from the Indigo Plugin Store.
 2. Configure the plugin providing the following information for your gateway: 
    1. IP address, 
@@ -42,8 +45,10 @@ The code requires a MasterLink or BeoLink Gateway to run - it is untested with t
 5. Devices can only access sources defined in their config on the gateway and will recognise at least the channel/tracks included in their favourites lists. Some sources (e.g. NetworkLink sources) may recognise additional channels and track data.
 6. Devices can be switched On/Off and toggled via the indigo UI
 
-##Advanced Functions
-###Plugin Events/Triggers
+<h2>Advanced Functions
+	
+<h3>Plugin Events/Triggers
+	
 The plugin can respond to various events on the B&O network including:
 - All Standby Events
 - Light Commands
@@ -53,9 +58,12 @@ The plugin can respond to various events on the B&O network including:
 
 These events can be found under the 'BeoGateway Plugin Event' list in Indigo's Create New Trigger dialogue 
 
-###Plugin Actions
+<h3>Plugin Actions
+	
 Indigo Events can trigger a number of actions on the B&O Network including:
-####BeoGateway Plugin Actions:
+	
+<h4>BeoGateway Plugin Actions:
+	
 - Request BLGW Home Integration Protocol State Updates for all devices
 - Send a BLGW Home Integration Protocol Command (*only on BLGW - see below*)
 - Send Free Text Integration Protocol Command (*for advanced users - see below*)
@@ -63,14 +71,16 @@ Indigo Events can trigger a number of actions on the B&O Network including:
 - Post a Message to the Notification Centre (*see below*)
 - Send All Standby Command
 
-####BeoGateway Device Actions:
+<h4>BeoGateway Device Actions:
+	
 - Send Beo4 Source Selection Command
 - Send Beo4 Key
 - Send BeoRemote One Source Selection Command
 - Send BeoRemote One Key
 - Request Device State Update
 
-###Protocol Monitoring
+<h3>Protocol Monitoring
+	
 Network traffic monitoring to the Indigo log be toggled in the plugin config menu:
 - [x] Verbose Mode
 
@@ -103,7 +113,8 @@ BeoGateway Plugin
         volume: 26
 ```
 
-###Apple Music Control
+<h3>Apple Music Control
+	
 Apple Music control can be toggled in the plugin config menu:
 - [x] Control Apple Music
 
@@ -130,7 +141,8 @@ The controls are mapped as follows:
 | Red | Red | More of the Same
 | Blue | Blue | Play the Album that the Current Track Resides On 
 
-###State Reporting in Apple Notification Centre
+<h3>State Reporting in Apple Notification Centre
+	
 State reports in the notification centre can be toggled in the config menu
 - [x] Post Notifications
 
@@ -139,7 +151,8 @@ State reports in the notification centre can be toggled in the config menu
 It is also possible to trigger notifications via any Indigo event using the action:
 "BeoGateway Plugin Actions/Post Message in Notification Centre"
 
-###Home Integration Protocol Commands
+<h3>Home Integration Protocol Commands
+	
 The BeoLink Gateway (BLGW) provides a Home Integration Protocol for external automation services to communicate with devices ont he B&O Network.
 A copy of the documentation for the protocol is included in the plugin's Resources/Documentation folder, and the overview below is lifted from that document.
 >With the introduction of BLGW, there is a standard way of identifying resources and specifying
@@ -199,6 +212,7 @@ commands or events.
 ```
 c */*/BUTTON/*/PRESS" + CR + LF
 ```
-##Credits
+<h2>Credits
+	
 The code draws heavily on the existing [MLGW](https://github.com/giachello/mlgw) project by user Giachello,
 but is recoded for Python 2.7. His work underpins the decoding of raw MasterLink packets for the ML Command Line Protocol.
