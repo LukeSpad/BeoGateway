@@ -121,6 +121,19 @@ Apple Music control can be toggled in the plugin config menu:
 It will also report the current track information to the indigo log if 'post notifications' is toggled:
 - [x] post notifications
 
+A typical track readout looks like this:
+```
+BeoGateway Plugin               
+    ----------------------------------------------------------------------------
+    iTUNES CURRENT TRACK INFO:
+    ============================================================================
+    Now playing: 'Eh, Petite Fille'
+                  by Clifton Chenier
+                  from the album 'Bayou Blues'
+    ----------------------------------------------------------------------------
+    ACTIVE AUDIO RENDERERS: Hallway Beolink Active
+```
+
 If the plugin is configured to map a source to Apple Music, selection of that source on your remote will initiate playback immediately, shuffling from the entire library. 
 If other AV renderers join the music experience playback is unaffected. Apple Music will stop playing when all active audio renderers go into a Standby state.
 The controls are mapped as follows:
