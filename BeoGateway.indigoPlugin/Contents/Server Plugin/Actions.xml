@@ -1,0 +1,203 @@
+<?xml version="1.0"?>
+<Actions>
+    <SupportURL>http://</SupportURL>
+        <Action id="sendBeo4Src" deviceFilter="self.AVrenderer" uiPath="DeviceActions">
+        <Name>Send Beo4 Source Selection Command</Name>
+        <CallbackMethod>send_beo4_src</CallbackMethod>
+        <ConfigUI>
+            <Field type="menu" id="keyCode" defaultValue="0">
+                <Label>Command:</Label>
+                <List class="self" filter="" method="beo4sourcelistgenerator"/>
+            </Field>
+            <Field type="menu" id="destination" defaultValue="0">
+                <Label>Destination:</Label>
+                <List class="self" filter="" method="destinationlistgenerator"/>
+            </Field>
+            <Field type="menu" id="linkcmd" defaultValue="0">
+                <Label>Link:</Label>
+                <List>
+                    <Option value="0">Local/Default Source</Option>
+                    <Option value="1">Link Source (Remote/Option 4 Product)</Option>
+                </List>
+            </Field>
+        </ConfigUI>
+    </Action>
+
+    <Action id="sendBeo4Key" deviceFilter="self.AVrenderer" uiPath="DeviceActions">
+        <Name>Send Beo4 Key</Name>
+        <CallbackMethod>send_beo4_key</CallbackMethod>
+        <ConfigUI>
+            <Field type="menu" id="keyCode" defaultValue="0">
+                <Label>Command:</Label>
+                <List class="self" filter="" method="keylistgenerator2"/>
+            </Field>
+            <Field type="menu" id="destination" defaultValue="0">
+                <Label>Destination:</Label>
+                <List class="self" filter="" method="destinationlistgenerator"/>
+            </Field>
+            <Field type="menu" id="linkcmd" defaultValue="0">
+                <Label>Link:</Label>
+                <List>
+                    <Option value="0">Local/Default Source</Option>
+                    <Option value="1">Link Source (Remote/Option 4 Product)</Option>
+                </List>
+            </Field>
+        </ConfigUI>
+    </Action>
+
+    <Action id="sendBeoRemoteOneSrc" deviceFilter="self.AVrenderer" uiPath="DeviceActions">
+        <Name>Send BeoRemote One Source Selection Command</Name>
+        <CallbackMethod>send_br1_src</CallbackMethod>
+        <ConfigUI>
+            <Field type="menu" id="keyCode" defaultValue="0">
+                <Label>Source:</Label>
+                <List class="self" filter="" method="br1sourcelistgenerator"/>
+            </Field>
+            <Field type="menu" id="netBit" defaultValue="0">
+                <Label>Link:</Label>
+                <List>
+                    <Option value="0">Local/Default Source</Option>
+                    <Option value="1">Network Source (Link/Option 4 Product)</Option>
+                </List>
+            </Field>
+        </ConfigUI>
+    </Action>
+
+     <Action id="sendBeoRemoteOneKey" deviceFilter="self.AVrenderer" uiPath="DeviceActions">
+        <Name>Send BeoRemote One Key</Name>
+        <CallbackMethod>send_br1_key</CallbackMethod>
+        <ConfigUI>
+            <Field type="menu" id="keyCode" defaultValue="0">
+                <Label>Command:</Label>
+                <List class="self" filter="" method="keylistgenerator2"/>
+            </Field>
+            <Field type="menu" id="netBit" defaultValue="0">
+                <Label>Link:</Label>
+                <List>
+                    <Option value="0">Local/Default Source</Option>
+                    <Option value="1">Network Source (Link/Option 4 Product)</Option>
+                </List>
+            </Field>
+        </ConfigUI>
+    </Action>
+
+    <Action id="requestdevupdate" deviceFilter="self.AVrenderer" uiPath="DeviceActions">
+        <Name>Request Device State Update</Name>
+        <CallbackMethod>request_state_update</CallbackMethod>
+    </Action>
+
+    <Action id="sendHIPquery">
+        <Name>Request BLGW Home Integration Protocol State Updates</Name>
+        <CallbackMethod>send_hip_query</CallbackMethod>
+        <ConfigUI>
+            <Field type="menu" id="zone" defaultValue="0">
+                <Label>Zone:</Label>
+                <List class="self" filter="" method="zonelistgenerator"/>
+            </Field>
+            <Field type="menu" id="room" defaultValue="0">
+                <Label>Room:</Label>
+                <List class="self" filter="" method="roomlistgenerator2"/>
+            </Field>
+            <Field type="menu" id="devType" defaultValue="0">
+                <Label>Device Type:</Label>
+                <List class="self" filter="" method="hiptypelistgenerator"/>
+            </Field>
+            <Field type="textfield" id="deviceID" defaultValue="*">
+                <Label>Device Name:</Label>
+            </Field>
+        </ConfigUI>
+    </Action>
+
+    <Action id="sendHIPcmd">
+        <Name>Send BLGW Home Integration Protocol Command</Name>
+        <CallbackMethod>send_hip_cmd</CallbackMethod>
+        <ConfigUI>
+            <Field type="menu" id="zone" defaultValue="0">
+                <Label>Zone:</Label>
+                <List class="self" filter="" method="zonelistgenerator"/>
+            </Field>
+            <Field type="menu" id="room" defaultValue="0">
+                <Label>Room:</Label>
+                <List class="self" filter="" method="roomlistgenerator2"/>
+            </Field>
+            <Field type="menu" id="devType" defaultValue="0">
+                <Label>Device Type:</Label>
+                <List class="self" filter="" method="hiptypelistgenerator"/>
+            </Field>
+            <Field type="textfield" id="deviceID" defaultValue="*">
+                <Label>Device Name:</Label>
+            </Field>
+            <Field type="textfield" id="hip_cmd" defaultValue="*">
+                <Label>Command:</Label>
+            </Field>
+            <Field type="label" id="lab0" fontColor="blue">
+                <Label>Note you do not need to add the '/' prefix for your command: The plugin will add this for you!</Label>
+            </Field>
+            <Field id="simpleSeparator1" type="separator"/>
+            <Field type="label" id="lab1">
+                <Label>Common HIP Commands:</Label>
+            </Field>
+            <Field type="label" id="lab2">
+                <Label>Press a virtual button: PRESS</Label>
+            </Field>
+            <Field type="label" id="lab3">
+                <Label>Turn on a button: _STATE_UPDATE?STATE=1</Label>
+            </Field>
+            <Field type="label" id="lab4">
+                <Label>Set a dimmer: SET?LEVEL=60</Label>
+            </Field>
+            <Field type="label" id="lab5">
+                <Label>Send a Beo4 Command: Beo4 command?Command=TV&amp;Destination selector=Video_source</Label>
+            </Field>
+            <Field type="label" id="lab6">
+                <Label>Turn off all AV Renderers: All standby</Label>
+            </Field>
+        </ConfigUI>
+    </Action>
+
+    <Action id="sendHIPcmd2">
+        <Name>Send Free Text Home Integration Protocol Command</Name>
+        <CallbackMethod>send_hip_cmd2</CallbackMethod>
+        <ConfigUI>
+            <Field type="textfield" id="hip_cmd" defaultValue="*">
+                <Label>Command:</Label>
+            </Field>
+        </ConfigUI>
+    </Action>
+
+    <Action id="sendVirtualButton">
+        <Name>Send Virtual Button</Name>
+        <CallbackMethod>send_virtual_button</CallbackMethod>
+        <ConfigUI>
+            <Field type="textfield" id="buttonID" defaultValue="0">
+                <Label>Virtual Button Number:</Label>
+            </Field>
+            <Field type="menu" id="action" defaultValue="1">
+                <Label>Action:</Label>
+                <List>
+                    <Option value="1">Press</Option>
+                    <Option value="2">Hold</Option>
+                    <Option value="3">Release</Option>
+                </List>
+            </Field>
+        </ConfigUI>
+    </Action>
+
+    <Action id="postNotification">
+        <Name>Post Message in Notification Centre</Name>
+        <CallbackMethod>post_notification</CallbackMethod>
+        <ConfigUI>
+            <Field type="textfield" id="title" defaultValue="BeoSystem Update">
+                <Label>Notification Title:</Label>
+            </Field>
+            <Field type="textfield" id="body" defaultValue="BeoSystem Update">
+                <Label>Body Text:</Label>
+            </Field>
+        </ConfigUI>
+    </Action>
+
+    <Action id="allStandby">
+        <Name>Send All Standby Command</Name>
+        <CallbackMethod>all_standby</CallbackMethod>
+    </Action>
+</Actions>
