@@ -12,7 +12,7 @@ The plugin provides the following functionality:
 - Defines an Indigo AV Renderer device type with state monitoring of 
   - Current Source ID and Source Name, 
   - PlayState, 
-  - Current Channel/Track number and Name, and 
+  - Current Channel/Track Number and Name, and 
   - Volume
 - Light and appliance control via Beo4/BeoRemote One LIGHT and CONTOL commands
 - Native control of Apple Music via user defined audio source (*N.MUSIC by default*), using Beo4/BeoRemote One to control transport 
@@ -30,8 +30,10 @@ The plugin provides the following functionality:
 
 ## Requirements
 	
-Compatible with legacy DataLink (via 1611 converter), MasterLink, and modern NetworkLink products, including the BeoLink Converter ML/NL.
+
 The code requires a MasterLink or BeoLink Gateway to run - it is untested with the BeoLiving Intelligence
+
+Compatible with legacy DataLink (via 1611 converter), MasterLink, and modern NetworkLink products, including the BeoLink Converter ML/NL.
 
 ## Basic Setup and Use
 	
@@ -136,6 +138,7 @@ BeoGateway Plugin
 
 If the plugin is configured to map a source to Apple Music, selection of that source on your remote will initiate playback immediately, shuffling from the entire library. 
 If other AV renderers join the music experience playback is unaffected. Apple Music will stop playing when all active audio renderers go into a Standby state.
+
 The controls are mapped as follows:
 
 | Beo4 Key | BeoRemote One Key | Apple Music Action |
@@ -167,11 +170,13 @@ It is also possible to trigger notifications via any Indigo event using the acti
 ### Home Integration Protocol Commands
 	
 The BeoLink Gateway (BLGW) provides a Home Integration Protocol for external automation services to communicate with devices on the B&O Network.
+
 A copy of the documentation for the protocol is included in the plugin's Resources/Documentation folder, and the overview below is lifted from that document.
 >With the introduction of BLGW, there is a standard way of identifying resources and specifying
 activity and state in the connected systems. Such activity can be represented unambiguously in
 the form of a text string.
-Home Integration Protocol allows external applications to directly interact with BLGW. This is done
+
+>Home Integration Protocol allows external applications to directly interact with BLGW. This is done
 by means of a minimalist line-based protocol that directly transports the text representation of all
 activity.  
  
