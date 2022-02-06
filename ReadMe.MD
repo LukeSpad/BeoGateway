@@ -166,7 +166,7 @@ It is also possible to trigger notifications via any Indigo event using the acti
 
 ### Home Integration Protocol Commands
 	
-The BeoLink Gateway (BLGW) provides a Home Integration Protocol for external automation services to communicate with devices ont he B&O Network.
+The BeoLink Gateway (BLGW) provides a Home Integration Protocol for external automation services to communicate with devices on the B&O Network.
 A copy of the documentation for the protocol is included in the plugin's Resources/Documentation folder, and the overview below is lifted from that document.
 >With the introduction of BLGW, there is a standard way of identifying resources and specifying
 activity and state in the connected systems. Such activity can be represented unambiguously in
