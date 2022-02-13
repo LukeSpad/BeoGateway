@@ -143,6 +143,7 @@ beo4_commanddict = OrderedDict(
         (0xDA, "Cinema_On"),
         (0xDB, "Cinema_Off"),
         # Other controls:
+        (0x7C, "Status"),   #??? 0x5D ???
         (0xF7, "Stand"),
         (0x0A, "Clear"),
         (0x0B, "Store"),
@@ -344,6 +345,7 @@ beoremoteone_keydict = OrderedDict(
         (0xDA, "Cinema_On"),
         (0xDB, "Cinema_Off"),
         # Other controls:
+        (0x7C, "Status"),   #??? 0x5D ???
         (0xF7, "Stand"),
         (0x0A, "Clear"),
         (0x0B, "Store"),
@@ -574,17 +576,6 @@ ml_selectedsourcedict = dict(
 ml_trackinfo_subtype_dict = dict([(0x05, "Current Source"), (0x07, "Change Source"), ])
 
 ml_sourcekind_dict = dict([(0x01, "audio source"), (0x02, "video source"), (0xFF, "undefined")])
-
-ml_selectedsource_type_dict = dict(
-    [
-        ("VIDEO", (0x0B, 0x1F)),
-        ("VIDEO_PAUSABLE", (0x15, 0x16, 0x29, 0x33)),
-        ("AUDIO", (0x6F, 0x97)),
-        ("AUDIO_PAUSABLE", (0x8D, 0x79, 0x7A, 0xA1, 0x8D)),
-        ("ALL", (0xFE, 0xFF)),
-        ("OTHER", (0x47, 0x3E)),
-    ]
-)
 
 # ########################################################################################
 # ##### MLGW Protocol packet constants

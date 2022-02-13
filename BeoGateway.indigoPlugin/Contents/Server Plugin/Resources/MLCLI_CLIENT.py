@@ -178,13 +178,6 @@ class MLCLIClient(asynchat.async_chat):
             result = self._hexbyte(s)
         return str(result)
 
-    @staticmethod
-    def _get_type(d, s):
-        rev_dict = {value: key for key, value in d.items()}
-        for i in range(len(list(rev_dict))):
-            if s in list(rev_dict)[i]:
-                return rev_dict.get(list(rev_dict)[i])
-
     # ########################################################################################
     # ##### Decode Masterlink Protocol packet to a serializable dict
     def _decode(self, telegram):
@@ -256,7 +249,7 @@ class MLCLIClient(asynchat.async_chat):
                 [
                     ("source", source),
                     ("sourceID", telegram[10]),
-                    ("source_type", self._get_type(CONST.ml_selectedsource_type_dict, telegram[10])),
+                    ("source_type", self._get_source_type(source)),
                     ("command", self._dictsanitize(CONST.beo4_commanddict, telegram[11]))
                 ]
             )
@@ -264,13 +257,13 @@ class MLCLIClient(asynchat.async_chat):
         # audio track info long
         if message.get("payload_type") == "TRACK_INFO_LONG":
             message["State_Update"]["nowPlaying"] = 'Unknown'
+            source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
             message["State_Update"]["nowPlayingDetails"] = OrderedDict(
                 [
-                    ("type", self._get_type(CONST.ml_selectedsource_type_dict, telegram[11])),
+                    ("type", self._get_source_type(source)),
                     ("channel_track", telegram[12]),
                 ]
             )
-            source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
             self._get_source_name(source, message)
             message["State_Update"]["source"] = source
             message["State_Update"]["sourceID"] = telegram[11]
@@ -280,13 +273,13 @@ class MLCLIClient(asynchat.async_chat):
         # video track info
         if message.get("payload_type") == "VIDEO_TRACK_INFO":
             message["State_Update"]["nowPlaying"] = 'Unknown'
+            source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[13])
             message["State_Update"]["nowPlayingDetails"] = OrderedDict(
                 [
-                    ("source_type", self._get_type(CONST.ml_selectedsource_type_dict, telegram[13])),
+                    ("source_type", self._get_source_type(source)),
                     ("channel_track", telegram[11] * 256 + telegram[12])
                 ]
             )
-            source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[13])
             self._get_source_name(source, message)
             message["State_Update"]["source"] = source
             message["State_Update"]["sourceID"] = telegram[13]
@@ -299,10 +292,10 @@ class MLCLIClient(asynchat.async_chat):
 
             # Change source
             if message["State_Update"].get("subtype") == "Change Source":
-                message["State_Update"]["prev_source"] = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
+                prev_source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
+                message["State_Update"]["prev_source"] = prev_source
                 message["State_Update"]["prev_sourceID"] = telegram[11]
-                message["State_Update"]["prev_source_type"] = self._get_type(
-                    CONST.ml_selectedsource_type_dict, telegram[11])
+                message["State_Update"]["prev_source_type"] = self._get_source_type(prev_source)
                 if len(telegram) > 18:
                     source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[22])
                     self._get_source_name(source, message)
@@ -315,7 +308,7 @@ class MLCLIClient(asynchat.async_chat):
                 self._get_source_name(source, message)
                 message["State_Update"]["source"] = source
                 message["State_Update"]["sourceID"] = telegram[11]
-                message["State_Update"]["source_type"] = self._get_type(CONST.ml_selectedsource_type_dict, telegram[11])
+                message["State_Update"]["source_type"] = self._get_source_type(source)
                 message["State_Update"]["state"] = 'Unknown'
             else:
                 message["State_Update"]["subtype"] = "Undefined: " + self._hexbyte(telegram[9])
@@ -323,13 +316,13 @@ class MLCLIClient(asynchat.async_chat):
         # goto source
         if message.get("payload_type") == "GOTO_SOURCE":
             message["State_Update"]["nowPlaying"] = 'Unknown'
+            source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
             message["State_Update"]["nowPlayingDetails"] = OrderedDict(
                 [
-                    ("source_type", self._get_type(CONST.ml_selectedsource_type_dict, telegram[11])),
+                    ("source_type", self._get_source_type(source)),
                     ("channel_track", telegram[12])
                 ]
             )
-            source = self._dictsanitize(CONST.ml_selectedsourcedict, telegram[11])
             self._get_source_name(source, message)
             message["State_Update"]["source"] = source
             message["State_Update"]["sourceID"] = telegram[11]
@@ -356,7 +349,7 @@ class MLCLIClient(asynchat.async_chat):
                 self._get_source_name(source, message)
                 message["State_Update"]["source"] = source
                 message["State_Update"]["sourceID"] = telegram[13]
-                message["State_Update"]["source_type"] = self._get_type(CONST.ml_selectedsource_type_dict, telegram[13])
+                message["State_Update"]["source_type"] = self._get_source_type(source)
 
         # request local audio source
         if message.get("payload_type") == "REQUEST_LOCAL_SOURCE":
@@ -366,7 +359,7 @@ class MLCLIClient(asynchat.async_chat):
                 self._get_source_name(source, message)
                 message["State_Update"]["source"] = source
                 message["State_Update"]["sourceID"] = telegram[11]
-                message["State_Update"]["source_type"] = self._get_type(CONST.ml_selectedsource_type_dict, telegram[11])
+                message["State_Update"]["source_type"] = self._get_source_type(source)
 
         # request local audio source
         if message.get("payload_type") == "PICTURE_AND_SOUND_STATUS":
@@ -382,7 +375,7 @@ class MLCLIClient(asynchat.async_chat):
             message['State_Update']['source'] = 'Unknown'
             message['State_Update']['sourceName'] = 'Unknown'
             message["State_Update"]["state"] = 'Unknown'
-            message["volume"] = int(telegram[12])
+            message["State_Update"]["volume"] = int(telegram[12])
 
         return message
 
@@ -460,3 +453,12 @@ class MLCLIClient(asynchat.async_chat):
                     return
         # If source list exhausted then return Unknown
         message["State_Update"]["sourceName"] = 'Unknown'
+
+    @staticmethod
+    def _get_source_type(source):
+        if source in CONST.source_type_dict.get('Audio Sources'):
+            return "AUDIO"
+        elif source in CONST.source_type_dict.get('Video Sources'):
+            return "VIDEO"
+        else:
+            return "OTHER"

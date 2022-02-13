@@ -159,7 +159,7 @@ class MLGWClient(asynchat.async_chat):
                 ]
             )
             message["State_Update"]["state"] = 'Unknown'
-            message["volume"] = int(payload[3])
+            message["State_Update"]["volume"] = int(payload[3])
 
         elif payload_type == "All standby notification":
             message["payload_type"] = payload_type
