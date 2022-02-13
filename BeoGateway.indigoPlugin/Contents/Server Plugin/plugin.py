@@ -3,6 +3,7 @@ import asyncore
 import json
 import time
 import logging
+import requests
 from datetime import datetime
 
 import Resources.CONSTANTS as CONST
@@ -219,7 +220,7 @@ class Plugin(indigo.PluginBase):
 
     # ########################################################################################
     # ##### Indigo UI Actions
-    def send_beo_4key(self, action, device):
+    def send_beo4_key(self, action, device):
         device_id = int(device.address)
         key_code = int(action.props.get("keyCode", 0))
         destination = int(action.props.get("destination", 0))
@@ -277,6 +278,26 @@ class Plugin(indigo.PluginBase):
         device_id = str(action.props.get("deviceID", 0))
         if self.mlcli.isBLGW:
             self.blgw.query(zone, room, device_type, device_id)
+
+    def send_bnr(self, action):
+        cmd_type = str(action.props.get("cmd_type", 0))
+        command = str(action.props.get("bnr_cmd", 0))
+        cmd_data = str(action.props.get("cmd_data", 0))
+        header = ''     # {'Content-Type': 'application/json'}
+
+        try:
+            if cmd_type == "GET":
+                response = requests.get(url=command, headers=header, timeout=1)
+            elif cmd_type == "POST":
+                response = requests.post(url=command, headers=header, data=cmd_data, timeout=1)
+            if cmd_type == "PUT":
+                response = requests.put(url=command, headers=header, data=cmd_data, timeout=1)
+
+            if response.content:
+                response = json.loads(response.content)
+                indigo.server.log(json.dumps(response, indent=4), level=logging.DEBUG)
+        except requests.ConnectionError, e:
+            indigo.server.log("Unable to process BeoNetRemote Command - " + str(e), level=logging.ERROR)
 
     def request_state_update(self, action, device):
         action_id = str(action.props.get("id", 0))
@@ -483,7 +504,14 @@ class Plugin(indigo.PluginBase):
         self.remove_from_renderers_list(node.name, 'All')
 
     def _status_request(self, node):
-        if node.pluginProps['serial_no'] == 'NA':   # Check if this is a netlink device
+        if node.pluginProps['serial_no'] == 'NA':   # Check if this is a NetLink device: if no serial number then false
+            # Potentially send a status update command but these may only work over 2 way IR, not the MasterLink
+            self.mlgw.send_beo4_cmd(
+                int(node.address),
+                int(CONST.CMDS_DEST.get("AUDIO SOURCE")),
+                int(CONST.BEO4_CMDS.get("STATUS"))
+            )
+
             indigo.server.log(node.name + " does not support status requests")
         else:   # If netlink, request a status update
             self.blgw.query(dev_type="AV renderer", device=node.name)
@@ -589,7 +617,7 @@ class Plugin(indigo.PluginBase):
 
         try:  # Check for unknown state
             if message['State_Update']['state'] in [None, 'None', '']:
-                    message['State_Update']['state'] = 'Unknown'
+                message['State_Update']['state'] = 'Unknown'
         except KeyError:
             pass
 
@@ -641,7 +669,7 @@ class Plugin(indigo.PluginBase):
 
                     # If standby command received <2.0 seconds after GOTO_SOURCE command , ignore
                     if 'state' in message['State_Update'] and message['State_Update']['state'] == "Standby" \
-                            and time_delta2 < 2.0:         # Condition 1
+                            and time_delta2 < 2.0:                                                  # Condition 1
                         if self.debug:
                             indigo.server.log(message['Device'] + " ignoring Standby: " + str(round(time_delta2, 2)) +
                                               " seconds elapsed since GOTO_STATE command - ignoring message!",
@@ -746,7 +774,6 @@ class Plugin(indigo.PluginBase):
 
                     # Initialise new state list - the device is not in standby so it must be on
                     new_state = last_state[:]
-                    new_state[5] = False
                     new_state[6] = True
 
                     # Update device states with values from message
@@ -766,7 +793,7 @@ class Plugin(indigo.PluginBase):
 
                     if 'nowPlaying' in message['State_Update']:
                         # Update now playing information unless the state value is empty or unknown
-                        if message['State_Update']['nowPlaying'] not in ['', 'Unknown']:
+                        if message['State_Update']['nowPlaying'] not in [0, '0', '', 'Unknown']:
                             new_state[2] = message['State_Update']['nowPlaying']
                         # If the state value is empty/unknown and the source has not changed then no update required
                         elif new_state[1] != last_state[1]:
@@ -782,6 +809,14 @@ class Plugin(indigo.PluginBase):
 
                     if 'volume' in message['State_Update']:
                         new_state[4] = message['State_Update']['volume']
+
+                    try:    # Check for mute state
+                        if message['State_Update']['sound_status']['mute_status'] == 'Muted':
+                            new_state[5] = True
+                        else:
+                            new_state[5] = False
+                    except KeyError:
+                        new_state[5] = False
 
                     if new_state != last_state:
                         # Update states on server

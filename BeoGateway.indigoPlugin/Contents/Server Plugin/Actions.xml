@@ -165,6 +165,28 @@
         </ConfigUI>
     </Action>
 
+    <Action id="sendBeoNetRemote">
+        <Name>Send Command via BeoNetRemote Client API</Name>
+        <CallbackMethod>send_bnr</CallbackMethod>
+        <ConfigUI>
+            <SupportURL>https://documenter.getpostman.com/view/1053298/T1LTe4Lt#c895e9b5-3141-4443-95fc-9b1ce4c6abfb</SupportURL>
+            <Field type="menu" id="cmd_type" defaultValue="1">
+                <Label>Action Type:</Label>
+                <List>
+                    <Option value="GET">GET</Option>
+                    <Option value="POST">POST</Option>
+                    <Option value="PUT">PUT</Option>
+                </List>
+            </Field>
+            <Field type="textfield" id="bnr_cmd" >
+                <Label>Command:</Label>
+            </Field>
+            <Field type="textfield" id="cmd_data" visibleBindingId="cmd_type" visibleBindingValue="(POST, PUT)">
+                <Label>Body:</Label>
+            </Field>
+        </ConfigUI>
+    </Action>
+
     <Action id="sendVirtualButton">
         <Name>Send Virtual Button</Name>
         <CallbackMethod>send_virtual_button</CallbackMethod>
