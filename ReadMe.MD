@@ -10,18 +10,18 @@ Plugin for the [Indigo Domotics](https://www.indigodomo.com) Home Automation sof
 The plugin provides the following functionality:
 
 - Defines an Indigo AV Renderer device type with state monitoring of 
-  - Current Source ID and Source Name, 
-  - PlayState, 
-  - Current Channel/Track Number and Name, and 
+  - Current Source ID and Source Name 
+  - PlayState 
+  - Current Channel/Track Number and Name
   - Volume
 - Light and appliance control via Beo4/BeoRemote One LIGHT and CONTOL commands
-- Native control of Apple Music via user defined audio source (*N.MUSIC by default*), using Beo4/BeoRemote One to control transport 
+- Native control of [Apple Music](https://github.com/LukeSpad/BeoGateway/edit/Indigo-Server-Plugin/ReadMe.MD#apple-music-control) via user defined audio source (*N.MUSIC by default*), using Beo4/BeoRemote One to control transport 
 - One touch activation of audio experiences via Indigo UI, any Indigo trigger, or Apple Home app. [^1]  
   - If all sources are in standby, a single press starts a pre-defined default audio experience (*RADIO by default*)
   - If sources are already playing, a single press joins the current audio experience
-- Send Home Integration Protocol commands to the gateway (BLGW only)
-- State change reporting in the Apple Notification Center
-- Basic monitoring and reporting of traffic on the Bang and Olufsen MasterLink network, including:
+- Send [Home Integration Protocol](https://github.com/LukeSpad/BeoGateway#home-integration-protocol-commands) commands to the gateway (BLGW only)
+- State change reporting in the [Apple Notification Center](https://github.com/LukeSpad/BeoGateway/edit/Indigo-Server-Plugin/ReadMe.MD#state-reporting-in-apple-notification-centre)
+- [Protocol Monitoring](https://github.com/LukeSpad/BeoGateway/edit/Indigo-Server-Plugin/ReadMe.MD#protocol-monitoring) and reporting of traffic on the Bang and Olufsen MasterLink network, including:
   - MasterLink packet information, 
   - MLGW protocol data, and 
   - Home Automation Protocol data
