@@ -4,6 +4,8 @@ import json
 import time
 import logging
 import requests
+import threading
+import os
 from datetime import datetime
 
 import Resources.CONSTANTS as CONST
@@ -20,18 +22,26 @@ class Plugin(indigo.PluginBase):
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
 
+        # Plugin polling and reporting parameters
         self.pollinterval = 595  # ping sent out at 9:55, response evaluated at 10:00
         self.trackmode = self.pluginPrefs.get("trackMode")
         self.verbose = self.pluginPrefs.get("verboseMode")
         self.notifymode = self.pluginPrefs.get("notifyMode")
         self.debug = self.pluginPrefs.get("debugMode")
-        self.default_audio_source = self.pluginPrefs.get("defaultAudio")
-        self.itunes_control = self.pluginPrefs.get("iTunesControl")
-        self.itunes_source = self.pluginPrefs.get("iTunesSource")
-        self.goto_flag = datetime(1982, 04, 01, 13, 30, 00, 342380)
-
         self.triggers = []
 
+        # Plugin audio source control parameters
+        self.default_audio_source = self.pluginPrefs.get("defaultAudio")
+        self.goto_flag = datetime(1982, 4, 1, 13, 30, 00, 342380)
+
+        # Plugin Apple Music control parameters
+        self.itunes_control = self.pluginPrefs.get("iTunesControl")
+        self.playlist_default = self.pluginPrefs.get("playlist_default")
+        self.playlist_green = self.pluginPrefs.get("playlist_green")
+        self.playlist_yellow = self.pluginPrefs.get("playlist_yellow")
+        self.itunes_source = self.pluginPrefs.get("iTunesSource")
+
+        # Gateway network address and login parameters
         self.host = str(self.pluginPrefs.get('address')).encode('ascii')
         self.port = [int(self.pluginPrefs.get('mlgw_port')),
                      int(self.pluginPrefs.get('hip_port')),
@@ -157,6 +167,9 @@ class Plugin(indigo.PluginBase):
             myarray.append(item)
         return myarray
 
+    def playlistgenerator(self, filter="", valuesDict=None, typeId="", targetId=0):
+        return self.iTunes.get_playlist_names()
+
     # ########################################################################################
     # ##### Indigo UI Prefs
     def set_login(self, ui):
@@ -217,6 +230,18 @@ class Plugin(indigo.PluginBase):
         # Define default audio source for AVrenderers
         self.default_audio_source = ui.get("defaultAudio")
         indigo.server.log("Default Audio Source set to " + str(self.default_audio_source), level=logging.DEBUG)
+
+    def set_playlist_default(self, ui):
+        self.playlist_default = ui.get("playlist_default")
+        indigo.server.log("Default Apple Music Playlist set to " + str(self.playlist_default), level=logging.DEBUG)
+
+    def set_playlist_green(self, ui):
+        self.playlist_green = ui.get("playlist_green")
+        indigo.server.log("Green Key Apple Music Playlist set to " + str(self.playlist_green), level=logging.DEBUG)
+
+    def set_playlist_yellow(self, ui):
+        self.playlist_yellow = ui.get("playlist_yellow")
+        indigo.server.log("Yellow Key Music Playlist set to " + str(self.playlist_yellow), level=logging.DEBUG)
 
     # ########################################################################################
     # ##### Indigo UI Actions
@@ -292,11 +317,13 @@ class Plugin(indigo.PluginBase):
                 response = requests.post(url=command, headers=header, data=cmd_data, timeout=1)
             if cmd_type == "PUT":
                 response = requests.put(url=command, headers=header, data=cmd_data, timeout=1)
+            else:
+                response = ''
 
             if response.content:
                 response = json.loads(response.content)
                 indigo.server.log(json.dumps(response, indent=4), level=logging.DEBUG)
-        except requests.ConnectionError, e:
+        except requests.ConnectionError as e:
             indigo.server.log("Unable to process BeoNetRemote Command - " + str(e), level=logging.ERROR)
 
     def request_state_update(self, action, device):
@@ -348,6 +375,7 @@ class Plugin(indigo.PluginBase):
             if trigger.pluginTypeId == "lightKey" and \
                     (props["room"] == str(99) or props["room"] == str(room)) and \
                     props["keyCode"] == str(key_code):
+                indigo.server.log("Executing Trigger: " + trigger.name, level=logging.DEBUG)
                 indigo.trigger.execute(trigger)
                 break
 
@@ -357,9 +385,10 @@ class Plugin(indigo.PluginBase):
 
         for trigger in self.triggers:
             props = trigger.globalProps["uk.co.lukes_plugins.BeoGateway.plugin"]
-            if trigger.pluginTypeId == "controlkey" and \
+            if trigger.pluginTypeId == "controlKey" and \
                     (props["room"] == str(99) or props["room"] == str(room)) and \
                     props["keyCode"] == str(key_code):
+                indigo.server.log("Executing Trigger: " + trigger.name, level=logging.DEBUG)
                 indigo.trigger.execute(trigger)
                 break
 
@@ -598,6 +627,12 @@ class Plugin(indigo.PluginBase):
                 pass
             else:
                 self.message_log(name, header, payload, message)
+
+        # Report Thread Count
+        if self.debug:
+            thread_count = int(threading.active_count())
+            if thread_count > 0:
+                indigo.server.log("Current Thread Count = " + str(thread_count), level=logging.DEBUG)
 
     # ########################################################################################
     # AV Handler Functions
@@ -978,13 +1013,13 @@ class Plugin(indigo.PluginBase):
         # Transport controls for iTunes
         try:  # If N.MUSIC command, trigger appropriate self.iTunes control
             if message['State_Update']['state'] not in ["", "Standby"]:
-                self.iTunes.play()
+                self.iTunes.play(self.playlist_default)
         except KeyError:
             pass
 
         try:  # If N.MUSIC selected and Beo4 command received then run appropriate transport commands
             if message['State_Update']['command'] == "Go/Play":
-                self.iTunes.play()
+                self.iTunes.play(self.playlist_default)
 
             elif message['State_Update']['command'] == "Stop":
                 self.iTunes.pause()
@@ -1007,6 +1042,11 @@ class Plugin(indigo.PluginBase):
             elif message['State_Update']['command'] == "Shift-1/Random":
                 self.iTunes.shuffle()
 
+            elif "Digit-" in message['State_Update']['command']:
+                rating = int(message['State_Update']['command'][-1:]) * 100/9
+                self.iTunes.set_rating(int(rating))
+
+
             # If 'Info' pressed - update track info
             elif message['State_Update']['command'] == "Info":
                 track_info = self.iTunes.get_current_track_info()
@@ -1022,6 +1062,8 @@ class Plugin(indigo.PluginBase):
                         "\n\tACTIVE AUDIO RENDERERS: " + str(self.gateway.states['AudioRenderers']) + "\n\n",
                         level=logging.DEBUG
                     )
+                    s = 'say ' + track_info[0] + ', by ' + track_info[2] + ', from the album, ' + track_info[1]
+                    os.system(s)
 
                 self.iTunes.notify(
                     "Now playing: '" + track_info[0] +
@@ -1045,13 +1087,17 @@ class Plugin(indigo.PluginBase):
                     "\n\tStep Down/P-   : Previous Track"
                     "\n\tWind           : Scan Forwards 15 Seconds"
                     "\n\tRewind         : Scan Backwards 15 Seconds"
+                    "\n\n\t** DIGITS **"
+                    "\n\tDigit  0       : Rate Track at 0 (0%), dislike it, and disable it from playback"
+                    "\n\tDigits 1 to 8  : Rate Track from 1 (10%) to 8 (90%)"
+                    "\n\tDigit  9       : Rate Track at 9 (100%) and 'love'' it"
                     "\n\n\t** FUNCTIONS **"
                     "\n\tShift-1/Random : Toggle Shuffle"
                     "\n\tINFO           : Display Track Info for Current Track"
                     "\n\tGUIDE          : This Guide"
                     "\n\n\t** ADVANCED CONTROLS **"
-                    "\n\tGreen          : Shuffle Playlist 'Recently Played'"
-                    "\n\tYellow         : Play Digital Radio Stations from Playlist Radio"
+                    "\n\tGreen          : Shuffle Playlist '" + self.playlist_green + "'"
+                    "\n\tYellow         : Shuffle Playlist '" + self.playlist_yellow + "'"
                     "\n\tRed            : More of the Same"
                     "\n\tBlue           : Play the Album that the Current Track Resides On\n\n",
                     level=logging.DEBUG
@@ -1060,13 +1106,15 @@ class Plugin(indigo.PluginBase):
             # If colour key pressed, execute the appropriate applescript
             elif message['State_Update']['command'] == "Green":
                 # Play a specific playlist - defaults to Recently Played
-                script = ASBridge.__file__[:-12] + '/Scripts/green.scpt'
-                self.iTunes.run_script(script, self.debug)
+                # script = ASBridge.__file__[:-12] + '/Scripts/green.scpt'
+                # self.iTunes.run_script(script, self.debug)
+                self.iTunes.play_playlist(self.playlist_green)
 
             elif message['State_Update']['command'] == "Yellow":
                 # Play a specific playlist - defaults to URL Radio stations
-                script = ASBridge.__file__[:-12] + '/Scripts/yellow.scpt'
-                self.iTunes.run_script(script, self.debug)
+                # script = ASBridge.__file__[:-12] + '/Scripts/yellow.scpt'
+                # self.iTunes.run_script(script, self.debug)
+                self.iTunes.play_playlist(self.playlist_yellow)
 
             elif message['State_Update']['command'] == "Blue":
                 # Play the current album

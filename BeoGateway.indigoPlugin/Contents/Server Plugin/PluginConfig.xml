@@ -65,6 +65,24 @@
 		</List>
 		<CallbackMethod>set_music_control</CallbackMethod>
 	</Field>
+	<Field type="menu" id="playlist_default" defaultValue="Library" visibleBindingId="iTunesControl"
+		   visibleBindingValue="true">
+		<Label>Apple Music Default Playlist:</Label>
+		<List class="self" filter="" method="playlistgenerator"/>
+		<CallbackMethod>set_playlist_default</CallbackMethod>
+	</Field>
+	<Field type="menu" id="playlist_green" defaultValue="Recently Added" visibleBindingId="iTunesControl"
+		   visibleBindingValue="true">
+		<Label>Apple Music Green Playlist:</Label>
+		<List class="self" filter="" method="playlistgenerator"/>
+		<CallbackMethod>set_playlist_green</CallbackMethod>
+	</Field>
+	<Field type="menu" id="playlist_yellow" defaultValue="Recently Played" visibleBindingId="iTunesControl"
+		   visibleBindingValue="true">
+		<Label>Apple Music Yellow Playlist:</Label>
+		<List class="self" filter="" method="playlistgenerator"/>
+		<CallbackMethod>set_playlist_yellow</CallbackMethod>
+	</Field>
 	<Field type="checkbox" id="trackMode" defaultValue="true" visibleBindingId="iTunesControl"
 		   visibleBindingValue="true">
         <Label>Track Reporting:</Label>
