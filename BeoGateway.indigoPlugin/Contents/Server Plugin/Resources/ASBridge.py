@@ -7,7 +7,9 @@ import threading
 from Foundation import NSAppleScript
 from ScriptingBridge import SBApplication
 
-''' Module defining a MusicController class for Apple Music, enables:
+''' This module requires PyObjC to be installed in order to use the AppleScriptingBridge for Apple Music
+
+    Module defining a MusicController class for Apple Music, enables:
         basic transport control of the player, 
         query of player status, 
         playing existing playlists,  
@@ -27,6 +29,7 @@ class MusicController(object):
 
     def __init__(self):
         self.app = SBApplication.applicationWithBundleIdentifier_("com.apple.Music")
+
 
     # ########################################################################################
     # Player information
@@ -53,14 +56,15 @@ class MusicController(object):
     def playpause(self):
         self.app.playpause()
 
-    def play(self):
+    def play(self, playlist_name):
         if PLAYSTATE.get(self.app.playerState()) in ['Wind', 'Rewind']:
             self.app.resume()
         elif PLAYSTATE.get(self.app.playerState()) == 'Pause':
             self.app.playpause()
         elif PLAYSTATE.get(self.app.playerState()) == 'Stop':
             self. app.setValue_forKey_('true', 'shuffleEnabled')
-            playlist = self.app.sources().objectWithName_("Library")
+            # playlist = self.app.sources().objectWithName_("Library")
+            playlist = self.app.sources().objectWithName_("Library").playlists().objectWithName_(playlist_name)
             playlist.playOnce_(None)
 
     def pause(self):
@@ -109,8 +113,35 @@ class MusicController(object):
 
     def play_playlist(self, playlist):
         self.app.stop()
+        self.app.setValue_forKey_('true', 'shuffleEnabled')
         playlist = self.app.sources().objectWithName_("Library").playlists().objectWithName_(playlist)
         playlist.playOnce_(None)
+
+    def get_playlist_names(self):
+        playlists = []
+        # Generate and return a list of playlists in Apple Music
+        for playlist in self.app.sources().objectWithName_("Library").playlists():
+            playlists.append(playlist.name())
+
+        return playlists
+
+    def set_rating(self, rate):
+        # Set the rating of the track in %
+        self.app.currentTrack().setValue_forKey_(str(rate), 'rating')
+
+        if int(rate) == 100:
+            # If rated 100% then set to loved and ensure the track is enabled
+            self.app.currentTrack().setValue_forKey_('true', 'loved')
+            self.app.currentTrack().setValue_forKey_('true', 'enabled')
+        elif int(rate) == 0:
+            # If rated 0% then set to disliked and disable the track so it will not be played in shuffle
+            self.app.currentTrack().setValue_forKey_('true', 'disliked')
+            self.app.currentTrack().setValue_forKey_('false', 'enabled')
+        else:
+            # else remove disliked/loved flags and check the track is enabled for playback
+            self.app.currentTrack().setValue_forKey_('false', 'disliked')
+            self.app.currentTrack().setValue_forKey_('false', 'loved')
+            self.app.currentTrack().setValue_forKey_('true', 'enabled')
 
     # ########################################################################################
     # Accessory functions - threaded due to execution time

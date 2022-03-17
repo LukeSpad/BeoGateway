@@ -12,7 +12,7 @@ import Resources.CONSTANTS as CONST
 class MLConfig:
 
     def __init__(self, host_address='blgw.local', user='admin', pwd='admin', debug=False):
-        self.debug =debug
+        self.debug = debug
 
         self._host = host_address
         self._user = user

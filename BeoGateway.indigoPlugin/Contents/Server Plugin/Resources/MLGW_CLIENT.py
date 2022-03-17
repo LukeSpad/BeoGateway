@@ -189,19 +189,19 @@ class MLGWClient(asynchat.async_chat):
         # Create the socket
         try:
             self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        except socket.error, e:
+        except socket.error as e:
             indigo.server.log("Error creating socket: " + str(e), level=logging.ERROR)
             self.handle_close()
         # Now connect
         try:
             self.connect((self._host, self._port))
-        except socket.gaierror, e:
+        except socket.gaierror as e:
             indigo.server.log("\tError with address: " + str(e), level=logging.ERROR)
             self.handle_close()
-        except socket.timeout, e:
+        except socket.timeout as e:
             indigo.server.log("\tSocket connection timed out: " + str(e), level=logging.ERROR)
             self.handle_close()
-        except socket.error, e:
+        except socket.error as e:
             indigo.server.log("\tError opening connection: " + str(e), level=logging.ERROR)
             self.handle_close()
         else:
@@ -242,10 +242,10 @@ class MLGWClient(asynchat.async_chat):
 
         try:
             self.push(str(bytearray(telegram)))
-        except socket.timeout, e:
+        except socket.timeout as e:
             indigo.server.log("\tSocket connection to timed out: " + str(e), level=logging.ERROR)
             self.handle_close()
-        except socket.error, e:
+        except socket.error as e:
             indigo.server.log("Error sending data: " + str(e), level=logging.ERROR)
             self.handle_close()
         else:

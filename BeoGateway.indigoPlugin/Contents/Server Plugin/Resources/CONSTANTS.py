@@ -143,7 +143,7 @@ beo4_commanddict = OrderedDict(
         (0xDA, "Cinema_On"),
         (0xDB, "Cinema_Off"),
         # Other controls:
-        (0x7C, "Status"),   #??? 0x5D ???
+        (0x7C, "Status"),   # ??? 0x5D ???
         (0xF7, "Stand"),
         (0x0A, "Clear"),
         (0x0B, "Store"),
@@ -181,6 +181,7 @@ beo4_commanddict = OrderedDict(
         # Functions:
         (0x40, "Guide"),
         (0x43, "Info"),
+        (0xE3, "Home Control"),
         (0x0F, "Function_1"),
         (0x10, "Function_2"),
         (0x11, "Function_3"),
@@ -345,7 +346,7 @@ beoremoteone_keydict = OrderedDict(
         (0xDA, "Cinema_On"),
         (0xDB, "Cinema_Off"),
         # Other controls:
-        (0x7C, "Status"),   #??? 0x5D ???
+        (0x7C, "Status"),   # ??? 0x5D ???
         (0xF7, "Stand"),
         (0x0A, "Clear"),
         (0x0B, "Store"),
@@ -381,6 +382,7 @@ beoremoteone_keydict = OrderedDict(
         (0x79, "Red Repeat"),
         (0x7E, "Key Release"),
         # Functions:
+        (0xE3, "Home Control"),
         (0x40, "Guide"),
         (0x43, "Info"),
         # Cursor functions:
