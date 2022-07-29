@@ -23,7 +23,7 @@ class MLConfig:
     def _download_data(self):
         try:
             indigo.server.log('Downloading configuration data from Gateway...', level=logging.WARNING)
-            url = 'http://' + self._host + '/mlgwpservices.json'
+            url = 'http://' + str(self._host) + '/mlgwpservices.json'
             # try Basic Auth next (this is needed for the BLGW)
             response = requests.get(url, auth=HTTPBasicAuth(self._user, self._pwd))
 
@@ -104,6 +104,7 @@ class MLConfig:
                 room['Room_Name'] = str(zone['name']).split('/')[1]
             elif gateway_type == 'mlgw':
                 # MLGW has no zoning concept - devices are arranged in rooms only
+                room['Zone'] = 'NA'
                 room['Room_Name'] = str(zone['name'])
 
             # Get products

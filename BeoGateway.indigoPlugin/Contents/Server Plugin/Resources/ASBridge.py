@@ -118,7 +118,7 @@ class MusicController(object):
         playlist.playOnce_(None)
 
     def get_playlist_names(self):
-        playlists = []
+        playlists = ["None"]
         # Generate and return a list of playlists in Apple Music
         for playlist in self.app.sources().objectWithName_("Library").playlists():
             playlists.append(playlist.name())

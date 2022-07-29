@@ -310,7 +310,7 @@ class MLtnClient(asynchat.async_chat):
 
     def _send_cmd(self, telegram):
         try:
-            self.push(telegram + "\r\n")
+            self.push(str(telegram + "\r\n"))
         except socket.timeout as e:
             indigo.server.log("\tSocket connection timed out: " + str(e), level=logging.ERROR)
             self.handle_close()

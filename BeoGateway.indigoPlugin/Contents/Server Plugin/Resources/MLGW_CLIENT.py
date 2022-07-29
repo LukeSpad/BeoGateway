@@ -240,6 +240,14 @@ class MLGWClient(asynchat.async_chat):
         for p in payload:
             telegram.append(p)
 
+        # Convert telegram to byte string
+        # b_telegram = b''
+        # for t in telegram:
+        #       if type(t) == int:
+        #            b_telegram += (t).to_bytes(1, byteorder='little')
+        #        else:
+        #            b_telegram += bytes(t, 'ascii')
+
         try:
             self.push(str(bytearray(telegram)))
         except socket.timeout as e:
@@ -249,14 +257,14 @@ class MLGWClient(asynchat.async_chat):
             indigo.server.log("Error sending data: " + str(e), level=logging.ERROR)
             self.handle_close()
         else:
-            self.last_sent = str(bytearray(telegram))
+            self.last_sent = str(list(telegram))
             self.last_sent_at = time.time()
             if msg_type != CONST.MLGW_PL.get("PING"):
                 indigo.server.log(
                     self.name + " >>-SENT--> "
                     + self._getpayloadtypestr(msg_type)
                     + ": "
-                    + str(list(telegram)),
+                    + self.last_sent,
                     level=logging.INFO)
             else:
                 if self.debug:
@@ -264,7 +272,7 @@ class MLGWClient(asynchat.async_chat):
                         self.name + " >>-SENT--> "
                         + self._getpayloadtypestr(msg_type)
                         + ": "
-                        + str(list(telegram)),
+                        + self.last_sent,
                         level=logging.DEBUG
                     )
 
