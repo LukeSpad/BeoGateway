@@ -22,35 +22,20 @@ class Plugin(indigo.PluginBase):
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
 
-        # Plugin polling and reporting parameters
-        self.pollinterval = 595  # ping sent out at 9:55, response evaluated at 10:00
-        self.trackmode = self.pluginPrefs.get("trackMode")
-        self.verbose = self.pluginPrefs.get("verboseMode")
-        self.notifymode = self.pluginPrefs.get("notifyMode")
-        self.debug = self.pluginPrefs.get("debugMode")
-        self.triggers = []
-
-        # Plugin audio source control parameters
-        self.default_audio_source = self.pluginPrefs.get("defaultAudio")
-        self.goto_flag = datetime(1982, 4, 1, 13, 30, 00, 342380)
-
-        # Plugin Apple Music control parameters
-        self.itunes_control = self.pluginPrefs.get("iTunesControl")
-        self.playlist_default = self.pluginPrefs.get("playlist_default")
-        self.playlist_green = self.pluginPrefs.get("playlist_green")
-        self.playlist_yellow = self.pluginPrefs.get("playlist_yellow")
-        self.itunes_source = self.pluginPrefs.get("iTunesSource")
-
-        # Gateway network address and login parameters
-        self.host = str(self.pluginPrefs.get('address')).encode('ascii')
-        self.port = [int(self.pluginPrefs.get('mlgw_port')),
-                     int(self.pluginPrefs.get('hip_port')),
-                     23]  # Telnet port - 23
-        self.user = str(self.pluginPrefs.get('userID')).encode('ascii')
-        self.pwd = str(self.pluginPrefs.get('password')).encode('ascii')
-
         # Instantiate an AppleScriptBridge MusicController for N.MUSIC control of apple Music
         self.iTunes = ASBridge.MusicController()
+
+    def startup(self):
+        # Get path to plugin config file
+        self.path = os.path.abspath(os.getcwd())[:-54] + \
+               "Preferences/Plugins/uk.co.lukes_plugins.BeoGateway.plugin.indiPref"
+
+        # If plugin is configured, initialise all clients and set config flag to True
+        if os.path.exists(self.path):
+            self.configure_clients()
+            self.configured = True
+        else:
+            self.configured = False
 
     def triggerStartProcessing(self, trigger):
         self.triggers.append(trigger)
@@ -199,7 +184,7 @@ class Plugin(indigo.PluginBase):
     def set_notifymode(self, ui):
         # If Notify Mode setting is updated in config, update the value in the plugin
         self.notifymode = ui.get("notifyMode")
-        indigo.server.log("Verbose Mode set to " + str(self.notifymode), level=logging.DEBUG)
+        indigo.server.log("Notification Mode set to " + str(self.notifymode), level=logging.DEBUG)
 
     def set_debug(self, ui):
         # If Debug Mode setting is updated in config, update the value in the plugin
@@ -242,6 +227,14 @@ class Plugin(indigo.PluginBase):
     def set_playlist_yellow(self, ui):
         self.playlist_yellow = ui.get("playlist_yellow")
         indigo.server.log("Yellow Key Music Playlist set to " + str(self.playlist_yellow), level=logging.DEBUG)
+
+    def set_playlist_red(self, ui):
+        self.playlist_red = ui.get("playlist_red")
+        indigo.server.log("Red Key Music Playlist set to " + str(self.playlist_red), level=logging.DEBUG)
+
+    def set_playlist_blue(self, ui):
+        self.playlist_blue = ui.get("playlist_blue")
+        indigo.server.log("Blue Key Music Playlist set to " + str(self.playlist_blue), level=logging.DEBUG)
 
     # ########################################################################################
     # ##### Indigo UI Actions
@@ -1046,7 +1039,6 @@ class Plugin(indigo.PluginBase):
                 rating = int(message['State_Update']['command'][-1:]) * 100/9
                 self.iTunes.set_rating(int(rating))
 
-
             # If 'Info' pressed - update track info
             elif message['State_Update']['command'] == "Info":
                 track_info = self.iTunes.get_current_track_info()
@@ -1098,8 +1090,8 @@ class Plugin(indigo.PluginBase):
                     "\n\n\t** ADVANCED CONTROLS **"
                     "\n\tGreen          : Shuffle Playlist '" + self.playlist_green + "'"
                     "\n\tYellow         : Shuffle Playlist '" + self.playlist_yellow + "'"
-                    "\n\tRed            : More of the Same"
-                    "\n\tBlue           : Play the Album that the Current Track Resides On\n\n",
+                    "\n\tRed            : Shuffle Playlist '" + self.playlist_red + "'"
+                    "\n\tBlue           : Shuffle Playlist '" + self.playlist_blue + "'\n\n",
                     level=logging.DEBUG
                 )
 
@@ -1108,23 +1100,30 @@ class Plugin(indigo.PluginBase):
                 # Play a specific playlist - defaults to Recently Played
                 # script = ASBridge.__file__[:-12] + '/Scripts/green.scpt'
                 # self.iTunes.run_script(script, self.debug)
-                self.iTunes.play_playlist(self.playlist_green)
+                if self.playlist_green != 'None':
+                    self.iTunes.play_playlist(self.playlist_green)
 
             elif message['State_Update']['command'] == "Yellow":
                 # Play a specific playlist - defaults to URL Radio stations
                 # script = ASBridge.__file__[:-12] + '/Scripts/yellow.scpt'
                 # self.iTunes.run_script(script, self.debug)
-                self.iTunes.play_playlist(self.playlist_yellow)
+                if self.playlist_yellow != 'None':
+                    self.iTunes.play_playlist(self.playlist_yellow)
 
             elif message['State_Update']['command'] == "Blue":
                 # Play the current album
-                script = ASBridge.__file__[:-12] + '/Scripts/blue.scpt'
-                self.iTunes.run_script(script, self.debug)
+                # script = ASBridge.__file__[:-12] + '/Scripts/blue.scpt'
+                # self.iTunes.run_script(script, self.debug)
+                if self.playlist_blue != 'None':
+                    self.iTunes.play_playlist(self.playlist_blue)
 
-            elif message['State_Update']['command'] in ["0xf2", "Red", "MOTS"]:
+            #elif message['State_Update']['command'] in ["0xf2", "Red", "MOTS"]:
+            elif message['State_Update']['command'] == "Red":
                 # More of the same (start a playlist with just current track and let autoplay find similar tunes)
-                script = ASBridge.__file__[:-12] + '/Scripts/red.scpt'
-                self.iTunes.run_script(script, self.debug)
+                # script = ASBridge.__file__[:-12] + '/Scripts/red.scpt'
+                # self.iTunes.run_script(script, self.debug)
+                if self.playlist_red != 'None':
+                    self.iTunes.play_playlist(self.playlist_red)
         except KeyError:
             pass
 
@@ -1273,8 +1272,38 @@ class Plugin(indigo.PluginBase):
 
     # ########################################################################################
     # Indigo Server Methods
-    def startup(self):
-        indigo.server.log(u"Startup called")
+    def configure_clients(self):
+        # Get Parameters from UI
+        # Plugin polling and reporting parameters
+        self.pollinterval = 595  # ping sent out at 9:55, response evaluated at 10:00
+        self.trackmode = self.pluginPrefs.get("trackMode")
+        self.verbose = self.pluginPrefs.get("verboseMode")
+        self.notifymode = self.pluginPrefs.get("notifyMode")
+        self.debug = self.pluginPrefs.get("debugMode")
+        self.triggers = []
+
+        # Plugin audio source control parameters
+        self.default_audio_source = self.pluginPrefs.get("defaultAudio")
+        self.goto_flag = datetime(1982, 4, 1, 13, 30, 00, 342380)
+
+        # Plugin Apple Music control parameters
+        self.itunes_control = self.pluginPrefs.get("iTunesControl")
+        self.playlist_default = self.pluginPrefs.get("playlist_default")
+        self.playlist_green = self.pluginPrefs.get("playlist_green")
+        self.playlist_yellow = self.pluginPrefs.get("playlist_yellow")
+        self.playlist_red = self.pluginPrefs.get("playlist_red")
+        self.playlist_blue = self.pluginPrefs.get("playlist_blue")
+        self.itunes_source = self.pluginPrefs.get("iTunesSource")
+
+        # Gateway network address and login parameters
+        self.host = str(self.pluginPrefs.get('address'))
+        self.port = [int(self.pluginPrefs.get('mlgw_port')),
+                     int(self.pluginPrefs.get('hip_port')),
+                     23]  # Telnet port - 23
+        self.user = str(self.pluginPrefs.get('userID'))
+        self.pwd = str(self.pluginPrefs.get('password'))
+
+        ###
 
         # Download the config file from the gateway and initialise the devices
         config = MLCONFIG.MLConfig(self.host, self.user, self.pwd, self.debug)
@@ -1320,6 +1349,16 @@ class Plugin(indigo.PluginBase):
     def runConcurrentThread(self):
         try:
             while True:
+                # If not configured yet, stall the programme flow until the user fills out the config UI
+                while not os.path.exists(self.path):
+                    indigo.server.log("Plugin not yet configured: Retrying in 10 seconds...", level=logging.WARNING)
+                    self.sleep(10.0)
+
+                # If configuration file exists, set up clients accordingly
+                if not self.configured:
+                    self.configure_clients()
+                    self.configured = True
+
                 # Ping all connections every 10 minutes to prompt messages on the network
                 asyncore.loop(count=self.pollinterval, timeout=1)
                 if self.mlgw.is_connected:

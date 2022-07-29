@@ -7,7 +7,7 @@
 	<Field id="subtitle1" type="label" alignText="left" fontColor="blue">
 		<Label>Gateway Network Address:</Label>
 	</Field>
-	<Field id="address" type="textfield" defaultValue="blgw.local.">
+	<Field id="address" type="textfield" defaultValue="blgw.local">
 		<Label>IP Address:</Label>
 		<CallbackMethod>set_gateway</CallbackMethod>
 	</Field>
@@ -82,6 +82,18 @@
 		<Label>Apple Music Yellow Playlist:</Label>
 		<List class="self" filter="" method="playlistgenerator"/>
 		<CallbackMethod>set_playlist_yellow</CallbackMethod>
+	</Field>
+	<Field type="menu" id="playlist_red" defaultValue="My Top Rated" visibleBindingId="iTunesControl"
+		   visibleBindingValue="true">
+		<Label>Apple Music Red Playlist:</Label>
+		<List class="self" filter="" method="playlistgenerator"/>
+		<CallbackMethod>set_playlist_red</CallbackMethod>
+	</Field>
+	<Field type="menu" id="playlist_blue" defaultValue="Tom 100 Most Played" visibleBindingId="iTunesControl"
+		   visibleBindingValue="true">
+		<Label>Apple Music Blue Playlist:</Label>
+		<List class="self" filter="" method="playlistgenerator"/>
+		<CallbackMethod>set_playlist_blue</CallbackMethod>
 	</Field>
 	<Field type="checkbox" id="trackMode" defaultValue="true" visibleBindingId="iTunesControl"
 		   visibleBindingValue="true">
