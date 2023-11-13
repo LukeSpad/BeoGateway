@@ -1,4 +1,7 @@
-import indigo
+try:
+    import indigo
+except ImportError:
+    pass
 import asyncore
 import json
 import time
@@ -46,6 +49,7 @@ class Plugin(indigo.PluginBase):
         if stateList is not None:
             if dev.deviceTypeId in self.devicesTypeDict and dev.deviceTypeId == u"AVrenderer":
                 # Add dynamic states onto stateList for devices of type AV renderer
+                # This allows devices to have unique source lists, rather than sharing a common source list
                 try:
                     sources = dev.pluginProps['sources']
                     for source_name in sources:
@@ -159,13 +163,13 @@ class Plugin(indigo.PluginBase):
     # ##### Indigo UI Prefs
     def set_login(self, ui):
         # If LogIn data is updated in config, update the values in the plugin
-        self.user = str(ui.get('userID')).encode('ascii')
-        self.pwd = str(ui.get('password')).encode('ascii')
+        self.user = ui.get('userID')
+        self.pwd = ui.get('password')
         indigo.server.log("BeoGateway device login details updated!", level=logging.DEBUG)
 
     def set_gateway(self, ui):
         # If gateway network address data is updated in config, update the values in the plugin
-        self.host = str(ui.get('address')).encode('ascii')
+        self.host = ui.get('address')
         self.port = [int(ui.get('mlgw_port')),
                      int(ui.get('hip_port')),
                      23]  # Telnet port - 23
@@ -421,17 +425,18 @@ class Plugin(indigo.PluginBase):
     # ##### Indigo UI Device Controls
     def actionControlDevice(self, action, node):
         """ Callback Method to Control a Relay Device. """
-        if action.deviceAction == indigo.kDeviceAction.TurnOn:
-            self._dev_on(node)
-        elif action.deviceAction == indigo.kDeviceAction.TurnOff:
-            self._dev_off(node)
-        elif action.deviceAction == indigo.kDeviceAction.Toggle:
-            if node.states["onOffState"]:
-                self._dev_off(node)
-            else:
+        if node.deviceTypeId == u"AVrenderer":
+            if action.deviceAction == indigo.kDeviceAction.TurnOn:
                 self._dev_on(node)
-        elif action.deviceAction == indigo.kDeviceAction.RequestStatus:
-            self._status_request(node)
+            elif action.deviceAction == indigo.kDeviceAction.TurnOff:
+                self._dev_off(node)
+            elif action.deviceAction == indigo.kDeviceAction.Toggle:
+                if node.states["onOffState"]:
+                    self._dev_off(node)
+                else:
+                    self._dev_on(node)
+            elif action.deviceAction == indigo.kDeviceAction.RequestStatus:
+                self._status_request(node)
 
     def _dev_on(self, node):
         indigo.server.log(node.name + " turned On")
@@ -586,7 +591,7 @@ class Plugin(indigo.PluginBase):
                 self._get_itunes_track_info(message)
 
             # For messages of type AV RENDERER, scan keys to update device states
-            if message["Type"] == "AV RENDERER":
+            if message["Type"] in ["AV RENDERER", "RESPONSE"]:
                 # Tidy up messages
                 self.av_sanitise(message)
                 # Filter messages that don't constitute meaningful state updates
@@ -624,7 +629,7 @@ class Plugin(indigo.PluginBase):
         # Report Thread Count
         if self.debug:
             thread_count = int(threading.active_count())
-            if thread_count > 0:
+            if thread_count > 1:
                 indigo.server.log("Current Thread Count = " + str(thread_count), level=logging.DEBUG)
 
     # ########################################################################################
@@ -667,6 +672,17 @@ class Plugin(indigo.PluginBase):
         except KeyError:
             pass
 
+        try:
+            if message['State_Update']['source'] == str(self.itunes_source) and \
+                    message['State_Update']['nowPlaying'] in [0, '0', '', 'Unknown']:
+                # If the source is iTunes and current track unknown then set to currently playing track
+                indigo.server.log('Telegram current track "unknown" - setting to iTunes currently playing',
+                                  level=logging.DEBUG)
+                message['State_Update']['nowPlaying'] = self.gateway.states['nowPlaying']
+
+        except KeyError:
+            pass
+
         try:    # Catch GOTO_SOURCE commands and set the goto_flag
             if message['payload_type'] == 'GOTO_SOURCE':
                 self.goto_flag = datetime.now()
@@ -681,7 +697,7 @@ class Plugin(indigo.PluginBase):
         # If device is changing source the state changes as follows [Old Source -> Standby -> New Source].
         # If the standby condition is processed, the New Source state will be filtered by the condition below
         #
-        # 2. Play states that received <1.5 seconds after standby state set:
+        # 2. Play states that received <2 seconds after standby state set:
         # Some messages come in on the ML and HIP protocols relating to previous state etc.
         # These can be ignored to avoid false states for the indigo devices
         try:
@@ -704,8 +720,8 @@ class Plugin(indigo.PluginBase):
                                               level=logging.DEBUG)
                         return False
 
-                    # If message received <1.5 seconds after standby state, ignore
-                    elif node.states['playState'] == "Standby" and time_delta1 < 1.5:               # Condition 2
+                    # If message received <2 seconds after standby state, ignore
+                    elif node.states['playState'] == "Standby" and time_delta1 < 2.0:               # Condition 2
                         if self.debug:
                             indigo.server.log(message['Device'] + " in Standby: " + str(round(time_delta1, 2)) +
                                               " seconds elapsed since last state update - ignoring message!",
@@ -1117,7 +1133,7 @@ class Plugin(indigo.PluginBase):
                 if self.playlist_blue != 'None':
                     self.iTunes.play_playlist(self.playlist_blue)
 
-            #elif message['State_Update']['command'] in ["0xf2", "Red", "MOTS"]:
+            # elif message['State_Update']['command'] in ["0xf2", "Red", "MOTS"]:
             elif message['State_Update']['command'] == "Red":
                 # More of the same (start a playlist with just current track and let autoplay find similar tunes)
                 # script = ASBridge.__file__[:-12] + '/Scripts/red.scpt'
@@ -1131,7 +1147,8 @@ class Plugin(indigo.PluginBase):
         track_info = self.iTunes.get_current_track_info()
         if track_info[0] not in [None, 'None']:
             # Construct track info string
-            track_info_ = "'" + track_info[0] + "' by " + track_info[2] + " from the album '" + track_info[1] + "'"
+            track_info_ = "'" + track_info[0].decode('utf8') + "' by " + track_info[2].decode('utf8') + \
+                          " from the album '" + track_info[1].decode('utf8') + "'"
 
             # Add now playing info to the message block
             if 'Type' in message and message['Type'] == "AV RENDERER" and 'source' in message['State_Update'] \
@@ -1147,16 +1164,15 @@ class Plugin(indigo.PluginBase):
                 indigo.server.log("\n\t----------------------------------------------------------------------------"
                                   "\n\tiTUNES CURRENT TRACK INFO:"
                                   "\n\t============================================================================"
-                                  "\n\tNow playing: '" + track_info[0] + "'"
-                                  "\n\t             by " + track_info[2] +
-                                  "\n\t             from the album '" + track_info[1] + "'"
+                                  "\n\tNow playing: '" + track_info[0].decode('utf8') + "'"
+                                  "\n\t             by " + track_info[2].decode('utf8') +
+                                  "\n\t             from the album '" + track_info[1].decode('utf8') + "'"
                                   "\n\t----------------------------------------------------------------------------"
                                   "\n\tACTIVE AUDIO RENDERERS: " + str(self.gateway.states['AudioRenderers']) + "\n\n")
 
                 if self.notifymode:
                     # Post track information to Apple Notification Centre
-                    self.iTunes.notify(track_info_ + " from source " + src,
-                                       "Now Playing:")
+                    self.iTunes.notify(track_info_ + " from source " + src, "Now Playing:")
 
             # Update nowPlaying on the gateway device
             if track_info_ != self.gateway.states['nowPlaying'] and \

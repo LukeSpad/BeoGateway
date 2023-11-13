@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Devices>
-	<Device type="custom" id="BOGateway">
+	<Device type="custom" id="BOGateway" allowUserCreation="False">
 		<Name>B&amp;O Gateway (MLGW, BLGW)</Name>
 		<ConfigUI>
 			<Field type="textfield" id="address" defaultValue="1" hidden="True">
@@ -60,7 +60,7 @@
 		</States>
 	</Device>
 
-	<Device type="relay" id="AVrenderer">
+	<Device type="relay" id="AVrenderer" >
 		<Name>AV renderer (Beovision, Beosound)</Name>
 		<ConfigUI>
 			<Field type="textfield" id="address" defaultValue="0">
