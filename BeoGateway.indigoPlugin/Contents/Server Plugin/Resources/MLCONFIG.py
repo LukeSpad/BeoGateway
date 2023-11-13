@@ -1,4 +1,7 @@
-import indigo
+try:
+    import indigo
+except ImportError:
+    pass
 import asyncore
 import json
 import requests
@@ -22,6 +25,8 @@ class MLConfig:
 
     def _download_data(self):
         try:
+            indigo.debugger()
+
             indigo.server.log('Downloading configuration data from Gateway...', level=logging.WARNING)
             url = 'http://' + str(self._host) + '/mlgwpservices.json'
             # try Basic Auth next (this is needed for the BLGW)
@@ -239,7 +244,7 @@ class MLConfig:
             CONST.rooms.append(room)
 
         # Report details of the configuration
-        n_devices = indigo.devices.len(filter="uk.co.lukes_plugins.BeoGateway.plugin.AVrenderer") - 1
+        n_devices = indigo.devices.len(filter="uk.co.lukes_plugins.BeoGateway.plugin.AVrenderer")
         indigo.server.log('Found ' + str(n_devices) + ' AV Renderers!', level=logging.DEBUG)
         for node in indigo.devices.iter('uk.co.lukes_plugins.BeoGateway.plugin.AVrenderer'):
             indigo.server.log('\tMLN ' + str(node.address) + ': ' + str(node.name), level=logging.INFO)
@@ -282,7 +287,6 @@ class MLConfig:
                                 test = False
                         except KeyError:
                             asyncore.loop(count=1, timeout=0.2)
-
                 else:
                     # If this is a NetLink product then it has a serial number and no ML_ID
                     indigo.server.log("\tNetworkLink ID of product " + node.name + " is " +

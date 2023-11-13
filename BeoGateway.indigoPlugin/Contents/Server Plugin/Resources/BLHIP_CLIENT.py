@@ -1,4 +1,7 @@
-import indigo
+try:
+    import indigo
+except ImportError:
+    pass
 import asynchat
 import socket
 import time
@@ -48,10 +51,11 @@ class BLHIPClient(asynchat.async_chat):
     # ##### Client functions
     def collect_incoming_data(self, data):
         self.is_connected = True
-        self._received_data += data
+        self._received_data += str(data)
 
     def found_terminator(self):
-        # indigo.server.log("Raw Data: " + self._received_data)
+        if self.debug:
+            indigo.server.log("Raw Data: " + self._received_data)
         self.last_received = self._received_data
         self.last_received_at = time.time()
 
@@ -62,7 +66,7 @@ class BLHIPClient(asynchat.async_chat):
             indigo.server.log('\tAuthentication Successful!', level=logging.DEBUG)
             self.query(dev_type="AV renderer")
 
-        self._received_data = urllib.unquote(self._received_data)
+        self._received_data = urllib.parse.unquote(self._received_data)
         telegram = self._received_data.replace("%201", "")
         telegram = telegram.split('/')
         header = telegram[0:4]
@@ -73,24 +77,20 @@ class BLHIPClient(asynchat.async_chat):
         e_string = str(header[0])
         if e_string[0] == 'e':
             if e_string[2:4] == 'OK' and self.debug:
-                indigo.server.log('Command Successfully Processed: ' + str(urllib.unquote(self._received_data)),
-                                  level=logging.DEBUG)
+                indigo.server.log('Command Successfully Processed: ' + str(self._received_data), level=logging.DEBUG)
 
             elif e_string[2:5] == 'CMD':
-                indigo.server.log('Wrong or Unrecognised Command: ' + str(urllib.unquote(self._received_data)),
-                                  level=logging.WARNING)
+                indigo.server.log('Wrong or Unrecognised Command: ' + str(self._received_data), level=logging.WARNING)
 
             elif e_string[2:5] == 'SYN':
-                indigo.server.log('Bad Syntax, or Wrong Character Encoding: ' +
-                                  str(urllib.unquote(self._received_data)), level=logging.WARNING)
+                indigo.server.log('Bad Syntax, or Wrong Character Encoding: ' + str(self._received_data),
+                                  level=logging.WARNING)
 
             elif e_string[2:5] == 'ACC':
-                indigo.server.log('Zone Access Violation: ' + str(urllib.unquote(self._received_data)),
-                                  level=logging.WARNING)
+                indigo.server.log('Zone Access Violation: ' + str(self._received_data), level=logging.WARNING)
 
             elif e_string[2:5] == 'LEN':
-                indigo.server.log('Received Message Too Long: ' + str(urllib.unquote(self._received_data)),
-                                  level=logging.WARNING)
+                indigo.server.log('Received Message Too Long: ' + str(self._received_data), level=logging.WARNING)
 
             self._received_data = ""
             return
@@ -190,9 +190,16 @@ class BLHIPClient(asynchat.async_chat):
         self.is_connected = False
         self.close()
 
-    def send_cmd(self, telegram):
+    def send_cmd(self, payload):
+        payload = payload + "\r\n"
+        payload = payload.encode('UTF8')
+        telegram = bytearray()
+        # append payload
+        for p in payload:
+            telegram.append(p)
+
         try:
-            self.push(str(telegram + "\r\n"))
+            self.push(telegram)
         except socket.timeout as e:
             indigo.server.log("\tSocket connection timed out: " + str(e), level=logging.ERROR)
             self.handle_close()
@@ -204,9 +211,9 @@ class BLHIPClient(asynchat.async_chat):
             self.last_sent_at = time.time()
             if telegram == 'q Main/global/SYSTEM/BeoLink':
                 if self.debug:
-                    indigo.server.log(self.name + " >>-SENT--> : " + telegram, level=logging.DEBUG)
+                    indigo.server.log(self.name + " >>-SENT--> : " + payload.decode('UTF8'), level=logging.DEBUG)
             else:
-                indigo.server.log(self.name + " >>-SENT--> : " + telegram, level=logging.INFO)
+                indigo.server.log(self.name + " >>-SENT--> : " + payload.decode('UTF8'), level=logging.INFO)
             time.sleep(0.2)
 
     def query(self, zone='*', room='*', dev_type='*', device='*'):

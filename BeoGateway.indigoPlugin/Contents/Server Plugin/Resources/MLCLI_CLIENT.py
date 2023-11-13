@@ -1,4 +1,7 @@
-import indigo
+try:
+    import indigo
+except ImportError:
+    pass
 import asynchat
 import socket
 import time
@@ -26,7 +29,7 @@ class MLCLIClient(asynchat.async_chat):
 
         self._i = 0
         self._header_lines = 6
-        self._received_data = ""
+        self._received_data = ''
         self.last_sent = ''
         self.last_sent_at = time.time()
         self.last_received = ''
@@ -48,7 +51,7 @@ class MLCLIClient(asynchat.async_chat):
     # ########################################################################################
     # ##### Client functions
     def collect_incoming_data(self, data):
-        self._received_data += data
+        self._received_data += str(data)
 
     def found_terminator(self):
         self.last_received = self._received_data
@@ -61,8 +64,10 @@ class MLCLIClient(asynchat.async_chat):
         if self._i <= self._header_lines:
             self._i += 1
         if self._i == self._header_lines - 1:
-            indigo.server.log("\tAuthenticated! Gateway type is " + telegram[0:4] + "\n", level=logging.DEBUG)
-            if telegram[0:4] != "MLGW":
+            if "MLGW" in telegram:
+                indigo.server.log("\tAuthenticated! Gateway type is MLGW\n", level=logging.DEBUG)
+            else:
+                indigo.server.log("\tAuthenticated! Gateway type is BLGW\n", level=logging.DEBUG)
                 self.isBLGW = True
 
         # Process telegrams and return json data in human readable format
@@ -79,10 +84,15 @@ class MLCLIClient(asynchat.async_chat):
                 # ML protocol message detected
                 items = telegram.split()[1:]
                 if len(items):
-                    telegram = bytearray()
+                    telegram = []
                     for item in items:
+                        if len(item) == 3:
+                            item = '0x' + item[:-1]
+                        elif len(item) == 4:
+                            item = '0x' + item[:-2]
+
                         try:
-                            telegram.append(int(item[:-1], base=16))
+                            telegram.append(int(item, base=16))
                         except (ValueError, TypeError):
                             # abort if invalid character found
                             if self.debug:
@@ -90,9 +100,8 @@ class MLCLIClient(asynchat.async_chat):
                                                   ''.join(items) + '\nAborting!', level=logging.ERROR)
                             break
 
-                # Decode any telegram with a valid 9 byte header, excluding typy 0x14 (regular clock sync pings)
-                if len(telegram) >= 9:
-                    # Header: To_Device/From_Device/1/Type/To_Source/From_Source/0/Payload_Type/Length
+                # Decode any telegram with a valid 9 byte header, excluding type 0x14 (regular clock sync pings)
+                if len(telegram) > 9:
                     header = telegram[:9]
                     payload = telegram[9:]
                     message = self._decode(telegram)
@@ -133,9 +142,16 @@ class MLCLIClient(asynchat.async_chat):
         self.is_connected = False
         self.close()
 
-    def send_cmd(self, telegram):
+    def send_cmd(self, payload):
+        payload = payload + "\r\n"
+        payload = payload.encode('UTF8')
+        telegram = bytearray()
+        # append payload
+        for p in payload:
+            telegram.append(p)
+
         try:
-            self.push(str(telegram + "\r\n"))
+            self.push(telegram)
         except socket.timeout as e:
             indigo.server.log("\tSocket connection timed out: " + str(e), level=logging.ERROR)
             self.handle_close()
@@ -145,7 +161,7 @@ class MLCLIClient(asynchat.async_chat):
         else:
             self.last_sent = telegram
             self.last_sent_at = time.time()
-            indigo.server.log(self.name + " >>-SENT--> : " + telegram, level=logging.INFO)
+            indigo.server.log(self.name + " >>-SENT--> : " + payload.decode('UTF8'), level=logging.INFO)
             time.sleep(0.2)
 
     def _report(self, header, payload, message):
@@ -156,7 +172,7 @@ class MLCLIClient(asynchat.async_chat):
     def ping(self):
         if self.debug:
             indigo.server.log(self.name + " >>-SENT--> : Ping", level=logging.DEBUG)
-        self.push('\n')
+        self.push(b'\n')
 
     # ########################################################################################
     # ##### Utility functions

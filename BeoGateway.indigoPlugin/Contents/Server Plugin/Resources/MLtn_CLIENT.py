@@ -1,4 +1,7 @@
-import indigo
+try:
+    import indigo
+except ImportError:
+    pass
 import asynchat
 import socket
 import time
@@ -47,7 +50,7 @@ class MLtnClient(asynchat.async_chat):
     # ########################################################################################
     # ##### Client functions
     def collect_incoming_data(self, data):
-        self._received_data += data
+        self._received_data += str(data)
 
     def found_terminator(self):
         self.last_received = self._received_data
@@ -300,17 +303,24 @@ class MLtnClient(asynchat.async_chat):
 
     def handle_connect(self):
         indigo.server.log("\tAttempting to Authenticate...", level=logging.WARNING)
-        self._send_cmd(self._pwd)
-        self._send_cmd("MONITOR")
+        self.send_cmd(self._pwd)
+        self.send_cmd("MONITOR")
 
     def handle_close(self):
         indigo.server.log(self.name + ": Closing socket", level=logging.ERROR)
         self.is_connected = False
         self.close()
 
-    def _send_cmd(self, telegram):
+    def send_cmd(self, payload):
+        payload = payload + "\r\n"
+        payload = payload.encode('UTF8')
+        telegram = bytearray()
+        # append payload
+        for p in payload:
+            telegram.append(p)
+
         try:
-            self.push(str(telegram + "\r\n"))
+            self.push(telegram)
         except socket.timeout as e:
             indigo.server.log("\tSocket connection timed out: " + str(e), level=logging.ERROR)
             self.handle_close()
@@ -320,7 +330,7 @@ class MLtnClient(asynchat.async_chat):
         else:
             self.last_sent = telegram
             self.last_sent_at = time.time()
-            indigo.server.log(self.name + " >>-SENT--> : " + telegram, level=logging.INFO)
+            indigo.server.log(self.name + " >>-SENT--> : " + payload.decode('UTF8'), level=logging.INFO)
             time.sleep(0.2)
 
     def toggle_events(self):
@@ -345,7 +355,7 @@ class MLtnClient(asynchat.async_chat):
             self.handle_close()
 
     def ping(self):
-        self._send_cmd('')
+        self.send_cmd('')
 
     # ########################################################################################
     # ##### Utility functions

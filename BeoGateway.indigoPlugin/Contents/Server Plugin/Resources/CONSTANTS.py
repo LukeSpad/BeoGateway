@@ -485,7 +485,7 @@ ml_command_type_dict = dict(
         #########################################################
         # On power up all devices send out a request key telegram. If
         # no lock manager is allocated the devices send out a key_lost telegram. The Video Master (or Power
-        # Master in older implementations) then asserts a NEW_LOCKmANAGER telegram and assumes responsibility
+        # Master in older implementations) then asserts a NEW_LOCKMANAGER telegram and assumes responsibility
         # for LOCKMANAGER_COMMAND telegrams until a key transfer occurs.
         # reference: https://tidsskrift.dk/daimipb/article/download/7043/6004/0
         (0x12, "KEY_LOST"),  # ?

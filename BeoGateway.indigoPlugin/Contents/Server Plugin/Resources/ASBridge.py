@@ -1,5 +1,8 @@
 #!/usr/bin/python
-import indigo
+try:
+    import indigo
+except ImportError:
+    pass
 import logging
 import os
 import unicodedata
@@ -29,7 +32,6 @@ class MusicController(object):
 
     def __init__(self):
         self.app = SBApplication.applicationWithBundleIdentifier_("com.apple.Music")
-
 
     # ########################################################################################
     # Player information
@@ -134,9 +136,11 @@ class MusicController(object):
             self.app.currentTrack().setValue_forKey_('true', 'loved')
             self.app.currentTrack().setValue_forKey_('true', 'enabled')
         elif int(rate) == 0:
-            # If rated 0% then set to disliked and disable the track so it will not be played in shuffle
+            # If rated 0% then set to disliked and disable the track, so it will not be played in shuffle
             self.app.currentTrack().setValue_forKey_('true', 'disliked')
             self.app.currentTrack().setValue_forKey_('false', 'enabled')
+            # It's obviously a stinker, so let's skip to the next track
+            self.app.nextTrack()
         else:
             # else remove disliked/loved flags and check the track is enabled for playback
             self.app.currentTrack().setValue_forKey_('false', 'disliked')

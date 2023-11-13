@@ -1,4 +1,7 @@
-import indigo
+try:
+    import indigo
+except ImportError:
+    pass
 import asynchat
 import socket
 import time
@@ -20,15 +23,15 @@ class MLGWClient(asynchat.async_chat):
 
         self._host = host_address
         self._port = int(port)
-        self._user = user
-        self._pwd = pwd
+        self._user = user.encode('UTF8')
+        self._pwd = pwd.encode('UTF8')
         self.name = name
         self.is_connected = False
 
         self._received_data = bytearray()
-        self.last_sent = ''
+        self.last_sent = bytearray()
         self.last_sent_at = time.time()
-        self.last_received = ''
+        self.last_received = bytearray()
         self.last_received_at = time.time()
         self.last_message = {}
 
@@ -72,11 +75,11 @@ class MLGWClient(asynchat.async_chat):
             self._received_data = ""
 
     def found_terminator(self, msg_type, payload):
-        self.last_received = str(list(self._received_data))
+        self.last_received = self._received_data
         self.last_received_at = time.time()
 
         header = self._received_data[0:4]
-        self._received_data = ""
+        self._received_data = bytearray()
         self._decode(msg_type, header, payload)
 
     def _decode(self, msg_type, header, payload):
@@ -184,6 +187,8 @@ class MLGWClient(asynchat.async_chat):
             self._report(header, payload, message)
 
     def client_connect(self):
+        indigo.debugger()
+
         indigo.server.log('Connecting to host at ' + self._host + ', port ' + str(self._port), level=logging.WARNING)
         self.set_terminator(b'\r\n')
         # Create the socket
@@ -209,7 +214,7 @@ class MLGWClient(asynchat.async_chat):
             indigo.server.log("\tConnected to B&O Gateway", level=logging.DEBUG)
 
     def handle_connect(self):
-        login = []
+        login = bytearray()
         for c in self._user:
             login.append(c)
         login.append(0x00)
@@ -217,6 +222,7 @@ class MLGWClient(asynchat.async_chat):
             login.append(c)
 
         indigo.server.log("\tAttempting to Authenticate...", level=logging.WARNING)
+        indigo.server.log("\tLogin: " + str(login), level=logging.DEBUG)
         self._send_cmd(CONST.MLGW_PL.get("LOGIN REQUEST"), login)
 
     def handle_close(self):
@@ -235,21 +241,19 @@ class MLGWClient(asynchat.async_chat):
     # send_cmd command to mlgw
     def _send_cmd(self, msg_type, payload):
         # Construct header
-        telegram = [1, msg_type, len(payload), 0]
+        telegram = bytearray()
+        telegram.append(1)
+        telegram.append(msg_type)
+        telegram.append(len(payload))
+        telegram.append(0)
+        indigo.debugger()
+
         # append payload
         for p in payload:
             telegram.append(p)
 
-        # Convert telegram to byte string
-        # b_telegram = b''
-        # for t in telegram:
-        #       if type(t) == int:
-        #            b_telegram += (t).to_bytes(1, byteorder='little')
-        #        else:
-        #            b_telegram += bytes(t, 'ascii')
-
         try:
-            self.push(str(bytearray(telegram)))
+            self.push(telegram)
         except socket.timeout as e:
             indigo.server.log("\tSocket connection to timed out: " + str(e), level=logging.ERROR)
             self.handle_close()
