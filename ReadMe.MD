@@ -35,6 +35,8 @@ The code requires a MasterLink or BeoLink Gateway to run - it is untested with t
 
 Compatible with legacy DataLink (via 1611 converter), MasterLink, and modern NetworkLink products, including the BeoLink Converter ML/NL.
 
+The code also makes extensive use of the syncore and asynchat packages for asynchronous communication. These are now depreciated in Python, but can be replaced with a simple PIP install of the pyasyncore and pyasynchat packages - no code modifications are required.
+
 ## Basic Setup and Use
 	
 1. Install the plugin from the Indigo Plugin Store.
