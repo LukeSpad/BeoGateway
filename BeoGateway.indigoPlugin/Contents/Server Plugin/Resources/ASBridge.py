@@ -7,8 +7,8 @@ import logging
 import os
 import unicodedata
 import threading
-from Foundation import NSAppleScript
-from ScriptingBridge import SBApplication
+from Foundation import *
+from ScriptingBridge import *
 
 ''' This module requires PyObjC to be installed in order to use the AppleScriptingBridge for Apple Music
 
@@ -173,3 +173,27 @@ class MusicController(object):
             s.executeAndReturnError_(None)
 
         threading.Thread(target=applet, args=(message, subtitle,)).start()
+
+    def add_current_track_to_library(self, debug):
+        # Add the currently streaming track to iTunes library
+        # Note this doesn't always work - there is a known issue with apple Music but as yet no fix
+        # https://developer.apple.com/forums/thread/694200
+        name = str(self.app.currentTrack().name())
+        indigo.server.log('Attempting to add ' + name + ' to iTunes library', level=logging.DEBUG)
+
+        script_content = 'tell application "Music"\n ' \
+                            'try\n ' \
+                                'duplicate current track to source "Library"\n ' \
+                            'on error\n ' \
+                                'duplicate current track to library playlist "Library"\n ' \
+                            'end try\n ' \
+                         'end tell\n '
+
+        script = NSAppleScript.alloc().initWithSource_(script_content)
+        result = script.executeAndReturnError_(None)
+
+        if str(result) == '(<NSAppleEventDescriptor: null()>, None)':
+            indigo.server.log('\t' + name + ' successfully added', level=logging.DEBUG)
+        else:
+            indigo.server.log('\tHmmm... That may not have worked', level=logging.DEBUG)
+            indigo.server.log('\tResult: ' + str(result), level=logging.DEBUG)
