@@ -1,0 +1,4 @@
+pyasyncore
+pyasynchat
+apple-fm-sdk
+pyobjc-framework-ScriptingBridge
